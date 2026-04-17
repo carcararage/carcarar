@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Carcarar | Marketing Estratégico - Sem estratégia, marketing é só um barulho bem produzido. Parnaíba, PI.">
+  <title>Carcarar | Marketing Estratégico</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjg2OSIgaGVpZ2h0PSIxNTM4IiB2aWV3Qm94PSIwIDAgMjg2OSAxNTM4IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNMjg2Ni4zMSAwSDE2LjA3MzJDMC44NTI3ODEgMCAtNS44NjIxIDE5LjQ3MzEgNi4yMjQ2OCAyOC44NzRMMTIxMS41NSA5NzQuNzc2TDEzODUuMjQgMTExMS4wOUMxNDMwLjkgMTA1My4zNCAxNDcyLjUzIDk5Mi40NTkgMTUxMC4xMyA5MjguNjY4QzE2MzQuMTMgNzE4LjI2OCAxNzExLjggNDc3LjY1MiAxNzI5LjA0IDIyMC42OTZIMjIwMC42NUMyMTgxLjQgNTg2Ljg4IDIwNjcuNDcgOTI4LjQ0NCAxODgyLjgxIDEyMjEuMjFDMTg0My40MSAxMjgzLjY2IDE4MDAuODkgMTM0My44NyAxNzU1LjQ1IDE0MDEuNjJMMTkyOC45MiAxNTM3LjcxQzE5NzQuNTggMTQ3OS45NiAyMDE3LjMzIDE0MTkuOTcgMjA1Ny40IDEzNTcuOTdDMjI3MC45MyAxMDI2LjkzIDI0MDEuODcgNjM4LjEzNyAyNDIxLjc5IDIyMC42OTZIMjg2Ni41NEMyODY3Ljg4IDE4My45ODggMjg2OSAxNDcuMjggMjg2OSAxMTAuMzQ4QzI4NjkgNzMuNDE2IDI4NjguMSAzNi43MDggMjg2Ni41NCAwSDI4NjYuMzFaTTEzMzQuNjUgNzkxLjAxM0w2MDcuODc4IDIyMC42OTZIMTUwNy42N0MxNDkxLjU2IDQyNi4zOTUgMTQzMC42NyA2MTkuNzgzIDEzMzQuNjUgNzkxLjAxM1oiIGZpbGw9IiNFNzQwMTEiLz4KPC9zdmc+">
+  
+  <!-- Google Fonts - Lexend Deca -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    html { scroll-behavior: smooth; }
+    
+    body { 
+      font-family: 'Lexend Deca', sans-serif; 
+      line-height: 1.6;
+      background: #0a0a0a;
+      color: #fff;
+    }
+    
+    /* ========== CORES - EDITE AQUI SE QUISER MUDAR ========== */
+    :root {
+      --laranja: #E95420;
+      --rosa: #E8A090;
+      --preto: #0a0a0a;
+      --cinza: #151515;
+      --terracota: #1a0f0a;
+    }
+    
+    /* LOGO EM SVG (sem fundo) */
+    .logo-svg { height: 36px; width: auto; }
+    .hero-symbol-svg { width: 40px; height: auto; opacity: 0.8; margin: 0 auto 3rem; display: block; }
+    .watermark-svg { position: absolute; opacity: 0.04; pointer-events: none; }
+    
+    /* ========== PADRÃO QUADRICULADO ========== */
+    .grid-bg {
+      background-image: 
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 80px 80px;
+    }
+    
+    /* ========== ANIMAÇÕES ========== */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    
+    .animate-fade-up {
+      animation: fadeInUp 0.8s ease-out forwards;
+    }
+    
+    .animate-fade {
+      animation: fadeIn 1s ease-out forwards;
+    }
+    
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
+    .delay-5 { animation-delay: 0.5s; }
+    
+    /* ========== HERO ========== */
+    .hero {
+      min-height: 100vh;
+      background: linear-gradient(160deg, var(--preto) 0%, var(--cinza) 50%, var(--terracota) 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 4rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Símbolo marca d'água */
+    .hero-watermark {
+      position: absolute;
+      right: -5%;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 50%;
+      max-width: 600px;
+      opacity: 0.04;
+      pointer-events: none;
+    }
+    
+    /* Quadriculado no hero */
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
+    
+    .header {
+      position: absolute;
+      top: 2rem;
+      left: 2rem;
+      right: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+    
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-img { height: 36px; width: auto; }
+    .logo-text { 
+      font-size: 18px; 
+      font-weight: 600; 
+      letter-spacing: 4px;
+      color: #fff;
+    }
+    
+    .header-tag { 
+      font-size: 12px; 
+      color: rgba(255,255,255,0.4); 
+      letter-spacing: 2px;
+      font-weight: 300;
+    }
+    
+    .hero-content { 
+      max-width: 900px; 
+      margin: 0 auto; 
+      text-align: center; 
+      position: relative; 
+      z-index: 2;
+      opacity: 0;
+    }
+    
+    .hero-sub { 
+      font-size: 12px; 
+      letter-spacing: 5px; 
+      color: var(--laranja); 
+      margin-bottom: 2.5rem; 
+      text-transform: uppercase;
+      font-weight: 400;
+    }
+    
+    .hero-title { 
+      font-size: clamp(2rem, 4.5vw, 3.5rem); 
+      font-weight: 300; 
+      line-height: 1.3; 
+      margin-bottom: 2rem;
+      letter-spacing: -0.5px;
+    }
+    
+    .hero-title .rosa { 
+      color: var(--rosa); 
+      font-style: italic;
+    }
+    
+    .hero-title .bold { 
+      font-weight: 700;
+    }
+    
+    .hero-text { 
+      font-size: 1.1rem; 
+      color: rgba(255,255,255,0.5); 
+      max-width: 500px; 
+      margin: 0 auto 3rem;
+      font-weight: 300;
+    }
+    
+    /* Símbolo centralizado abaixo da frase */
+    .hero-symbol {
+      width: 40px;
+      height: auto;
+      margin: 0 auto 3rem;
+      opacity: 0.8;
+    }
+    
+    .btn { 
+      background: transparent; 
+      color: var(--laranja); 
+      border: 1.5px solid var(--laranja); 
+      padding: 1rem 2.5rem; 
+      font-size: 0.85rem; 
+      font-weight: 500; 
+      border-radius: 50px; 
+      cursor: pointer; 
+      text-decoration: none; 
+      display: inline-block; 
+      transition: all 0.4s ease;
+      letter-spacing: 2px;
+      font-family: inherit;
+    }
+    
+    .btn:hover { 
+      background: var(--laranja); 
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(233,84,32,0.3);
+    }
+    
+    .hero-footer { 
+      position: absolute; 
+      bottom: 2.5rem; 
+      left: 2rem; 
+      right: 2rem; 
+      display: flex; 
+      justify-content: space-between;
+      z-index: 2;
+    }
+    
+    .hero-footer span { 
+      font-size: 10px; 
+      letter-spacing: 3px; 
+      color: rgba(255,255,255,0.2);
+      font-weight: 400;
+    }
+    
+    /* ========== CONCEITO (LARANJA) ========== */
+    .conceito {
+      background: linear-gradient(135deg, var(--laranja) 0%, #c44518 100%);
+      color: #fff;
+      padding: 7rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .conceito::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    
+    .conceito-grid { 
+      max-width: 1000px; 
+      margin: 0 auto; 
+      display: grid; 
+      grid-template-columns: 1fr 1.2fr; 
+      gap: 5rem; 
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .section-sub { 
+      font-size: 11px; 
+      letter-spacing: 4px; 
+      margin-bottom: 1.5rem; 
+      opacity: 0.7;
+      font-weight: 400;
+    }
+    
+    .conceito-title { 
+      font-size: clamp(2.2rem, 4vw, 3rem); 
+      font-weight: 700; 
+      line-height: 1.15;
+    }
+    
+    .conceito-text { 
+      font-size: 1.05rem; 
+      line-height: 1.9;
+      font-weight: 300;
+    }
+    
+    .conceito-text strong { font-weight: 600; }
+    
+    /* ========== MÉTODO (ESCURO) ========== */
+    .metodo {
+      background: linear-gradient(180deg, var(--preto) 0%, var(--cinza) 100%);
+      color: #fff;
+      padding: 7rem 2rem;
+      position: relative;
+    }
+    
+    .metodo::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    
+    /* Marca d'água no método */
+    .metodo-watermark {
+      position: absolute;
+      left: -10%;
+      bottom: -10%;
+      width: 40%;
+      opacity: 0.03;
+      pointer-events: none;
+    }
+    
+    .metodo-container { 
+      max-width: 1100px; 
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .section-sub-laranja { 
+      font-size: 11px; 
+      letter-spacing: 4px; 
+      color: var(--laranja); 
+      margin-bottom: 1rem;
+      font-weight: 400;
+    }
+    
+    .metodo-title { 
+      font-size: clamp(1.8rem, 3.5vw, 2.5rem); 
+      font-weight: 600; 
+      margin-bottom: 1rem;
+    }
+    
+    .metodo-title .rosa { color: var(--rosa); }
+    
+    .metodo-intro { 
+      color: rgba(255,255,255,0.4); 
+      margin-bottom: 4rem; 
+      max-width: 500px;
+      font-weight: 300;
+    }
+    
+    /* Cards circulares estilo ALCANCE */
+    .metodo-circles {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      flex-wrap: wrap;
+    }
+    
+    .circle-card {
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      border: 2px solid rgba(233,84,32,0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+      position: relative;
+      transition: all 0.4s ease;
+      background: rgba(255,255,255,0.02);
+    }
+    
+    .circle-card:hover {
+      border-color: var(--laranja);
+      transform: scale(1.05);
+      background: rgba(233,84,32,0.05);
+    }
+    
+    .circle-card::before {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      border: 1px solid rgba(233,84,32,0.1);
+    }
+    
+    .circle-num {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: rgba(233,84,32,0.2);
+      margin-bottom: 0.5rem;
+    }
+    
+    .circle-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--laranja);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    
+    .circle-text {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.5;
+      font-weight: 300;
+    }
+    
+    /* ========== SOLUÇÕES (CLARO) ========== */
+    .solucoes { 
+      background: #f8f8f8; 
+      color: #1a1a1a; 
+      padding: 7rem 2rem;
+      position: relative;
+    }
+    
+    .solucoes::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    
+    .solucoes-container { 
+      max-width: 1000px; 
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .solucoes-title { 
+      font-size: clamp(1.8rem, 3.5vw, 2.5rem); 
+      font-weight: 600; 
+      margin-bottom: 3rem;
+    }
+    
+    .solucoes-title .rosa { color: var(--rosa); }
+    
+    .solucao { 
+      background: #fff; 
+      border: 1px solid rgba(0,0,0,0.06); 
+      border-radius: 16px; 
+      padding: 2rem; 
+      display: flex; 
+      gap: 1.5rem; 
+      margin-bottom: 1rem;
+      transition: all 0.4s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .solucao::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: linear-gradient(180deg, var(--laranja), var(--rosa));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    .solucao:hover { 
+      box-shadow: 0 15px 40px rgba(0,0,0,0.08);
+      transform: translateY(-3px);
+    }
+    
+    .solucao:hover::before {
+      opacity: 1;
+    }
+    
+    .solucao-icon { 
+      width: 56px; 
+      height: 56px; 
+      background: linear-gradient(135deg, var(--laranja), var(--rosa)); 
+      border-radius: 14px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      flex-shrink: 0;
+    }
+    
+    .solucao-icon svg { 
+      width: 26px; 
+      height: 26px; 
+      stroke: #fff; 
+      stroke-width: 1.5; 
+      fill: none;
+    }
+    
+    .solucao-title { 
+      font-size: 1.15rem; 
+      font-weight: 600; 
+      margin-bottom: 0.5rem;
+      color: #1a1a1a;
+    }
+    
+    .solucao-text { 
+      color: #666;
+      font-weight: 300;
+      font-size: 0.95rem;
+    }
+    
+    /* ========== DIFERENCIAIS (ESCURO) ========== */
+    .diferenciais { 
+      background: linear-gradient(180deg, var(--cinza) 0%, var(--preto) 100%); 
+      color: #fff; 
+      padding: 5rem 2rem 4rem;
+      position: relative;
+    }
+    
+    .diferenciais::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    
+    .diferenciais-container { 
+      max-width: 900px; 
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .diferenciais-title { 
+      font-size: clamp(1.8rem, 3.5vw, 2.5rem); 
+      font-weight: 600; 
+      margin-bottom: 3rem;
+    }
+    
+    .diferenciais-title .rosa { color: var(--rosa); }
+    
+    .dif { 
+      display: flex; 
+      gap: 1.5rem; 
+      margin-bottom: 2.5rem;
+      padding: 1.5rem;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+    
+    .dif:hover {
+      background: rgba(255,255,255,0.02);
+    }
+    
+    .dif-check { 
+      width: 48px; 
+      height: 48px; 
+      background: rgba(233,84,32,0.1); 
+      border: 1px solid rgba(233,84,32,0.3);
+      border-radius: 50%; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      flex-shrink: 0;
+      transition: all 0.3s;
+    }
+    
+    .dif:hover .dif-check {
+      background: var(--laranja);
+      border-color: var(--laranja);
+    }
+    
+    .dif-check svg { 
+      width: 20px; 
+      height: 20px; 
+      stroke: var(--laranja); 
+      stroke-width: 2; 
+      fill: none;
+      transition: stroke 0.3s;
+    }
+    
+    .dif:hover .dif-check svg {
+      stroke: #fff;
+    }
+    
+    .dif-title { 
+      font-size: 1.1rem; 
+      font-weight: 600; 
+      margin-bottom: 0.5rem;
+    }
+    
+    .dif-text { 
+      color: rgba(255,255,255,0.5);
+      font-weight: 300;
+    }
+    
+    /* ========== FORMULÁRIO ========== */
+    .formulario { 
+      background: linear-gradient(180deg, var(--preto) 0%, var(--cinza) 40%, var(--terracota) 100%); 
+      color: #fff; 
+      padding: 7rem 2rem;
+      position: relative;
+    }
+    
+    .formulario::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    
+    /* Marca d'água */
+    .form-watermark {
+      position: absolute;
+      right: 5%;
+      top: 20%;
+      width: 30%;
+      opacity: 0.03;
+      pointer-events: none;
+    }
+    
+    .form-container { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .form-title { 
+      font-size: clamp(2rem, 4.5vw, 3.2rem); 
+      font-weight: 600; 
+      margin-bottom: 1rem;
+    }
+    
+    .form-title .rosa { color: var(--rosa); }
+    
+    .form-intro { 
+      color: rgba(255,255,255,0.5); 
+      margin-bottom: 3rem;
+      font-weight: 300;
+    }
+    
+    .form-box { 
+      background: rgba(255,255,255,0.02); 
+      border: 1px solid rgba(233,84,32,0.15); 
+      border-radius: 24px; 
+      padding: 3rem;
+      text-align: left;
+    }
+    
+    .form-group { margin-bottom: 1.5rem; }
+    
+    .form-label { 
+      display: block; 
+      font-size: 0.8rem; 
+      color: rgba(255,255,255,0.6); 
+      margin-bottom: 0.6rem;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+    }
+    
+    .form-input, 
+    .form-select, 
+    .form-textarea { 
+      width: 100%; 
+      background: rgba(255,255,255,0.03); 
+      border: 1px solid rgba(255,255,255,0.08); 
+      border-radius: 12px; 
+      padding: 1rem 1.2rem; 
+      color: #fff; 
+      font-size: 0.95rem; 
+      font-family: inherit;
+      font-weight: 300;
+      outline: none;
+      transition: all 0.3s;
+    }
+    
+    .form-input:focus, 
+    .form-select:focus, 
+    .form-textarea:focus { 
+      border-color: var(--laranja);
+      background: rgba(233,84,32,0.05);
+    }
+    
+    .form-input::placeholder, 
+    .form-textarea::placeholder { 
+      color: rgba(255,255,255,0.3);
+    }
+    
+    .form-select { 
+      color: rgba(255,255,255,0.6); 
+      cursor: pointer;
+    }
+    
+    .form-select option {
+      background: #1a1a1a;
+      color: #fff;
+    }
+    
+    .form-textarea { resize: none; }
+    
+    .btn-submit { 
+      width: 100%; 
+      background: linear-gradient(135deg, var(--laranja), #c44518); 
+      color: #fff; 
+      border: none; 
+      padding: 1.2rem; 
+      font-size: 0.9rem; 
+      font-weight: 600; 
+      border-radius: 50px; 
+      cursor: pointer;
+      font-family: inherit;
+      letter-spacing: 1px;
+      transition: all 0.4s;
+    }
+    
+    .btn-submit:hover { 
+      transform: translateY(-3px);
+      box-shadow: 0 15px 40px rgba(233,84,32,0.35);
+    }
+    
+    .form-note { 
+      text-align: center; 
+      margin-top: 1.2rem; 
+      font-size: 0.75rem; 
+      color: rgba(255,255,255,0.3);
+      font-weight: 300;
+    }
+    
+    /* ========== FOOTER ========== */
+    .footer { 
+      background: #050505; 
+      color: #fff; 
+      padding: 3.5rem 2rem; 
+      text-align: center;
+    }
+    
+    .footer-logo { 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 12px; 
+      margin-bottom: 1.5rem;
+    }
+    
+    .footer-logo img { height: 32px; }
+    
+    .footer-logo span { 
+      font-size: 18px; 
+      font-weight: 600; 
+      letter-spacing: 4px;
+    }
+    
+    .footer-tag { 
+      font-size: 0.9rem; 
+      color: rgba(255,255,255,0.4); 
+      margin-bottom: 1.5rem;
+      font-weight: 300;
+    }
+    
+    .footer-links { 
+      display: flex; 
+      justify-content: center; 
+      gap: 2rem; 
+      margin-bottom: 2rem;
+    }
+    
+    .footer-links a { 
+      color: rgba(255,255,255,0.4); 
+      text-decoration: none; 
+      font-size: 0.85rem;
+      font-weight: 400;
+      transition: color 0.3s;
+    }
+    
+    .footer-links a:hover { color: var(--laranja); }
+    
+    .footer-copy { 
+      font-size: 0.7rem; 
+      color: rgba(255,255,255,0.2);
+      font-weight: 300;
+    }
+    
+    /* ========== RESPONSIVO ========== */
+    @media (max-width: 900px) {
+      .metodo-circles {
+        gap: 2rem;
+      }
+      .circle-card {
+        width: 240px;
+        height: 240px;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .conceito-grid { 
+        grid-template-columns: 1fr; 
+        gap: 2rem; 
+      }
+      .metodo-circles {
+        flex-direction: column;
+        align-items: center;
+      }
+      .header { 
+        flex-direction: column; 
+        gap: 1rem;
+        text-align: center;
+      }
+      .header-tag, .hero-footer { display: none; }
+      .form-box { padding: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========== HERO ========== -->
+  <section class="hero">
+    <!-- Marca d'água símbolo SVG - EXPANDIDA -->
+    <svg class="watermark-svg" style="right:-15%;top:30%;width:70%;max-width:800px;opacity:0.06;" viewBox="0 0 2869 1538" fill="none"><path d="M2866.31 0H16.0732C0.852781 0 -5.8621 19.4731 6.22468 28.874L1211.55 974.776L1385.24 1111.09C1430.9 1053.34 1472.53 992.459 1510.13 928.668C1634.13 718.268 1711.8 477.652 1729.04 220.696H2200.65C2181.4 586.88 2067.47 928.444 1882.81 1221.21C1843.41 1283.66 1800.89 1343.87 1755.45 1401.62L1928.92 1537.71C1974.58 1479.96 2017.33 1419.97 2057.4 1357.97C2270.93 1026.93 2401.87 638.137 2421.79 220.696H2866.54C2867.88 183.988 2869 147.28 2869 110.348C2869 73.416 2868.1 36.708 2866.54 0H2866.31ZM1334.65 791.013L607.878 220.696H1507.67C1491.56 426.395 1430.67 619.783 1334.65 791.013Z" fill="#E74011"/></svg>
+    
+    <header class="header">
+      <div class="logo">
+        <!-- LOGO SÍMBOLO -->
+        <svg class="logo-svg" viewBox="0 0 2869 1538" fill="none"><path d="M2866.31 0H16.0732C0.852781 0 -5.8621 19.4731 6.22468 28.874L1211.55 974.776L1385.24 1111.09C1430.9 1053.34 1472.53 992.459 1510.13 928.668C1634.13 718.268 1711.8 477.652 1729.04 220.696H2200.65C2181.4 586.88 2067.47 928.444 1882.81 1221.21C1843.41 1283.66 1800.89 1343.87 1755.45 1401.62L1928.92 1537.71C1974.58 1479.96 2017.33 1419.97 2057.4 1357.97C2270.93 1026.93 2401.87 638.137 2421.79 220.696H2866.54C2867.88 183.988 2869 147.28 2869 110.348C2869 73.416 2868.1 36.708 2866.54 0H2866.31ZM1334.65 791.013L607.878 220.696H1507.67C1491.56 426.395 1430.67 619.783 1334.65 791.013Z" fill="#E74011"/></svg>
+        <!-- NOME CARCARAR SVG -->
+        <svg style="height:18px;width:auto;" viewBox="0 0 1321 136" fill="none"><path d="M273.001 0.618039H206.425C185.549 0.618039 168.518 17.6141 168.518 38.49V135.11H194.716V93.4611H284.675V135.11H310.873V38.49C310.873 17.6141 293.877 0.618039 273.001 0.618039ZM284.675 67.2974H194.716V38.5244C194.716 32.0693 199.97 26.8503 206.39 26.8503H272.967C279.422 26.8503 284.641 32.1036 284.641 38.5244V67.2974H284.675ZM479.426 57.3059V36.9449C479.426 16.9274 463.151 0.618039 443.099 0.618039H337.071L336.934 134.526H363.132L363.269 93.6328H414.6L445.022 134.526H479.529L447.631 93.3237C465.554 91.0919 479.46 75.8127 479.46 57.3059H479.426ZM443.099 67.4348H363.269V26.8503H443.099C448.661 26.8503 453.193 31.3826 453.193 36.9449V57.3059C453.193 62.8682 448.661 67.4005 443.099 67.4005V67.4348ZM778.041 0H711.465C690.589 0 673.558 16.996 673.558 37.872V134.492H699.756V93.4611H789.715V134.492H815.913V37.872C815.913 16.996 798.917 0 778.041 0ZM789.715 67.2974H699.756V37.9063C699.756 31.4513 705.01 26.2323 711.43 26.2323H778.007C784.462 26.2323 789.681 31.4856 789.681 37.9063V67.2974H789.715ZM984.466 56.6878V36.3269C984.466 16.3093 968.191 0 948.139 0H842.111L841.905 134.526H868.103L868.309 93.0147H919.572L950.027 134.526H984.534L952.465 92.74C970.457 90.5769 984.431 75.2633 984.431 56.7222L984.466 56.6878ZM948.139 66.8168H868.309V26.2323H948.139C953.701 26.2323 958.233 30.7646 958.233 36.3269V56.6878C958.233 62.2502 953.701 66.7824 948.139 66.7824V66.8168ZM1115.11 0H1048.54C1027.66 0 1010.63 16.996 1010.63 37.872V134.492H1036.83V93.4611H1126.79V134.492H1152.98V37.872C1152.98 16.996 1135.99 0 1115.08 0H1115.11ZM1126.79 67.2974H1036.83V37.9063C1036.83 31.4513 1042.08 26.2323 1048.5 26.2323H1115.08C1121.53 26.2323 1126.75 31.4856 1126.75 37.9063V67.2974H1126.79ZM1288.27 92.7057C1306.26 90.5425 1320.23 75.229 1320.23 56.6878V36.3269C1320.23 16.3093 1303.96 0 1283.9 0H1177.88V134.526H1204.08V93.0147H1255.34L1285.79 134.526H1320.3L1288.23 92.74L1288.27 92.7057ZM1283.9 66.8168H1204.08V26.2323H1283.9C1289.47 26.2323 1294 30.7646 1294 36.3269V56.6878C1294 62.2502 1289.47 66.7824 1283.9 66.7824V66.8168ZM0 38.49V96.0019C0 116.878 16.996 133.874 37.872 133.874H142.32V107.676H37.872C31.4169 107.676 26.1979 102.423 26.1979 96.0019V38.49C26.1979 32.035 31.4513 26.816 37.872 26.816H142.32V0.618039H37.872C16.996 0.618039 0 17.6141 0 38.49ZM505.04 38.49V96.0019C505.04 116.878 522.036 133.874 542.912 133.874H647.36V107.676H542.912C536.457 107.676 531.238 102.423 531.238 96.0019V38.49C531.238 32.035 536.491 26.816 542.912 26.816H647.36V0.618039H542.912C522.036 0.618039 505.04 17.6141 505.04 38.49Z" fill="white"/></svg>
+      </div>
+      <span class="header-tag">MARKETING ESTRATÉGICO</span>
+    </header>
+    
+    <div class="hero-content animate-fade-up">
+      <p class="hero-sub">Parnaíba, PI</p>
+      
+      <h1 class="hero-title">
+        Sem <span class="rosa">estratégia</span>, marketing é só<br>
+        um <span class="bold">barulho bem produzido!</span>
+      </h1>
+      
+      <!-- Símbolo SVG centralizado -->
+      <svg class="hero-symbol-svg" viewBox="0 0 2869 1538" fill="none"><path d="M2866.31 0H16.0732C0.852781 0 -5.8621 19.4731 6.22468 28.874L1211.55 974.776L1385.24 1111.09C1430.9 1053.34 1472.53 992.459 1510.13 928.668C1634.13 718.268 1711.8 477.652 1729.04 220.696H2200.65C2181.4 586.88 2067.47 928.444 1882.81 1221.21C1843.41 1283.66 1800.89 1343.87 1755.45 1401.62L1928.92 1537.71C1974.58 1479.96 2017.33 1419.97 2057.4 1357.97C2270.93 1026.93 2401.87 638.137 2421.79 220.696H2866.54C2867.88 183.988 2869 147.28 2869 110.348C2869 73.416 2868.1 36.708 2866.54 0H2866.31ZM1334.65 791.013L607.878 220.696H1507.67C1491.56 426.395 1430.67 619.783 1334.65 791.013Z" fill="#E74011"/></svg>
+      
+      <p class="hero-text">
+        Aqui, a gente amplia o olhar pra identificar oportunidades com clareza e atuar com precisão.
+      </p>
+      
+      <a href="#contato" class="btn">QUERO FALAR COM A CARCARAR →</a>
+    </div>
+    
+    <div class="hero-footer">
+      <span>ESTRATÉGIA</span>
+      <span>VISÃO E DECISÃO</span>
+    </div>
+  </section>
+
+  <!-- ========== CONCEITO ========== -->
+  <section class="conceito">
+    <div class="conceito-grid">
+      <div>
+        <p class="section-sub">SOBRE A CARCARAR</p>
+        <h2 class="conceito-title">Carcarar nasce<br>como verbo.</h2>
+      </div>
+      <div>
+        <p class="conceito-text">
+          Uma metodologia que <strong>amplia o olhar</strong> para identificar oportunidades com clareza e <strong>atuar com precisão</strong>.
+        </p>
+        <p class="conceito-text" style="margin-top:1.5rem">
+          Trabalhamos com a <strong>Metodologia dos 8 P's</strong>: Produto, Preço, Praça, Promoção, Posicionamento, Pessoas, Processos e Performance — transformando dados em vantagem competitiva.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== MÉTODO ========== -->
+  <section class="metodo" id="metodo">
+    <!-- Marca d'água SVG EXPANDIDA -->
+    <svg class="watermark-svg" style="right:-20%;bottom:-20%;width:80%;opacity:0.06;" viewBox="0 0 2869 1538" fill="none"><path d="M2866.31 0H16.0732C0.852781 0 -5.8621 19.4731 6.22468 28.874L1211.55 974.776L1385.24 1111.09C1430.9 1053.34 1472.53 992.459 1510.13 928.668C1634.13 718.268 1711.8 477.652 1729.04 220.696H2200.65C2181.4 586.88 2067.47 928.444 1882.81 1221.21C1843.41 1283.66 1800.89 1343.87 1755.45 1401.62L1928.92 1537.71C1974.58 1479.96 2017.33 1419.97 2057.4 1357.97C2270.93 1026.93 2401.87 638.137 2421.79 220.696H2866.54C2867.88 183.988 2869 147.28 2869 110.348C2869 73.416 2868.1 36.708 2866.54 0H2866.31ZM1334.65 791.013L607.878 220.696H1507.67C1491.56 426.395 1430.67 619.783 1334.65 791.013Z" fill="#E74011"/></svg>
+    
+    <div class="metodo-container">
+      <p class="section-sub-laranja">NOSSA BASE ESTRATÉGICA</p>
+      <h2 class="metodo-title">Como transformamos visão em <span class="rosa">decisão</span>.</h2>
+      <p class="metodo-intro">Metodologia aplicada em cada projeto para garantir clareza e resultado.</p>
+      
+      <!-- Cards circulares -->
+      <div class="metodo-circles">
+        <div class="circle-card">
+          <span class="circle-num">01</span>
+          <h3 class="circle-title">Observar</h3>
+          <p class="circle-text">Diagnóstico profundo do negócio, mercado e canais.</p>
+        </div>
+        
+        <div class="circle-card">
+          <span class="circle-num">02</span>
+          <h3 class="circle-title">Analisar</h3>
+          <p class="circle-text">Métricas de faturamento, não de vaidade.</p>
+        </div>
+        
+        <div class="circle-card">
+          <span class="circle-num">03</span>
+          <h3 class="circle-title">Decidir</h3>
+          <p class="circle-text">Funil claro até a conversão.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SOLUÇÕES ========== -->
+  <section class="solucoes">
+    <div class="solucoes-container">
+      <p class="section-sub-laranja">O QUE FAZEMOS</p>
+      <h2 class="solucoes-title">Soluções <span class="rosa">Estratégicas</span></h2>
+      
+      <div class="solucao">
+        <div class="solucao-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+        </div>
+        <div>
+          <h3 class="solucao-title">Marketing Estratégico</h3>
+          <p class="solucao-text">Gestão de redes sociais, peças visuais, campanhas sazonais e captação de imagem alinhada ao posicionamento.</p>
+        </div>
+      </div>
+      
+      <div class="solucao">
+        <div class="solucao-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <div>
+          <h3 class="solucao-title">Direção de Marca e Posicionamento</h3>
+          <p class="solucao-text">Criação de identidade visual, tom de voz, reposicionamento estratégico e direção criativa impositiva.</p>
+        </div>
+      </div>
+      
+      <div class="solucao">
+        <div class="solucao-icon">
+          <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div>
+          <h3 class="solucao-title">Marketing com Foco em Growth</h3>
+          <p class="solucao-text">Tráfego pago (anúncios), estratégias de funil para captação de leads e planejamento de campanhas.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== DIFERENCIAIS ========== -->
+  <section class="diferenciais">
+    <div class="diferenciais-container">
+      <p class="section-sub-laranja">O DIFERENCIAL CARCARAR</p>
+      <h2 class="diferenciais-title">Por que somos a escolha <span class="rosa">estratégica</span>?</h2>
+      
+      <div class="dif">
+        <div class="dif-check">
+          <svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
+        </div>
+        <div>
+          <h3 class="dif-title">Soluções superiores e tecnicamente avançadas</h3>
+          <p class="dif-text">Busca contínua por oferecer soluções antes da concorrência.</p>
+        </div>
+      </div>
+      
+      <div class="dif">
+        <div class="dif-check">
+          <svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
+        </div>
+        <div>
+          <h3 class="dif-title">Conhecimento profundo de cada negócio</h3>
+          <p class="dif-text">Entendemos as necessidades únicas para gerar soluções flexíveis e personalizadas.</p>
+        </div>
+      </div>
+      
+      <div class="dif">
+        <div class="dif-check">
+          <svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
+        </div>
+        <div>
+          <h3 class="dif-title">Estrutura focada em acelerar resultados</h3>
+          <p class="dif-text">Adaptável e disruptiva, focada em eliminar burocracia.</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Borda divisória -->
+    <div style="max-width:200px;margin:4rem auto 0;height:2px;background:linear-gradient(90deg,transparent,var(--laranja),transparent);"></div>
+  </section>
+
+  <!-- ========== FORMULÁRIO ========== -->
+  <section class="formulario" id="contato">
+    <!-- Marca d'água SVG EXPANDIDA -->
+    <svg class="watermark-svg" style="right:-10%;top:10%;width:60%;opacity:0.06;" viewBox="0 0 2869 1538" fill="none"><path d="M2866.31 0H16.0732C0.852781 0 -5.8621 19.4731 6.22468 28.874L1211.55 974.776L1385.24 1111.09C1430.9 1053.34 1472.53 992.459 1510.13 928.668C1634.13 718.268 1711.8 477.652 1729.04 220.696H2200.65C2181.4 586.88 2067.47 928.444 1882.81 1221.21C1843.41 1283.66 1800.89 1343.87 1755.45 1401.62L1928.92 1537.71C1974.58 1479.96 2017.33 1419.97 2057.4 1357.97C2270.93 1026.93 2401.87 638.137 2421.79 220.696H2866.54C2867.88 183.988 2869 147.28 2869 110.348C2869 73.416 2868.1 36.708 2866.54 0H2866.31ZM1334.65 791.013L607.878 220.696H1507.67C1491.56 426.395 1430.67 619.783 1334.65 791.013Z" fill="#E74011"/></svg>
+    
+    <div class="form-container">
+      <p class="section-sub-laranja">VAMOS CONVERSAR?</p>
+      <h2 class="form-title">Pronto pra <span class="rosa">carcarar</span>?</h2>
+      <p class="form-intro">Preencha o formulário. Se fizer sentido, a gente entra em contato pra uma conversa de clareza.</p>
+      
+      <!-- FORMULÁRIO CONFIGURADO COM FORMSUBMIT -->
+      <form class="form-box" id="leadForm">
+        
+        <!-- Honeypot anti-spam -->
+        <input type="text" name="_honey" style="display:none">
+        
+        <div class="form-group">
+          <label class="form-label">Seu nome *</label>
+          <input type="text" name="Nome" class="form-input" placeholder="Como posso te chamar?" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">E-mail *</label>
+          <input type="email" name="Email" class="form-input" placeholder="seu@email.com" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">WhatsApp *</label>
+          <input type="tel" name="WhatsApp" class="form-input" placeholder="(86) 99999-9999" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Nome da empresa</label>
+          <input type="text" name="Empresa" class="form-input" placeholder="Qual o nome do seu negócio?">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Segmento *</label>
+          <select name="Segmento" class="form-select" required>
+            <option value="">Selecione seu segmento</option>
+            <option value="Varejo / Comércio">Varejo / Comércio</option>
+            <option value="Saúde / Clínicas">Saúde / Clínicas</option>
+            <option value="Imobiliário">Imobiliário</option>
+            <option value="Alimentação / Restaurantes">Alimentação / Restaurantes</option>
+            <option value="Beleza / Estética">Beleza / Estética</option>
+            <option value="Educação / Cursos">Educação / Cursos</option>
+            <option value="Advocacia / Jurídico">Advocacia / Jurídico</option>
+            <option value="Contabilidade">Contabilidade</option>
+            <option value="Construção / Arquitetura">Construção / Arquitetura</option>
+            <option value="Agronegócio">Agronegócio</option>
+            <option value="Automotivo">Automotivo</option>
+            <option value="Serviços Gerais">Serviços Gerais</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Faturamento mensal *</label>
+          <select name="Faturamento" class="form-select" required>
+            <option value="">Selecione a faixa</option>
+            <option value="Até R$ 10 mil">Até R$ 10 mil</option>
+            <option value="De R$ 10 mil a R$ 30 mil">De R$ 10 mil a R$ 30 mil</option>
+            <option value="De R$ 30 mil a R$ 100 mil">De R$ 30 mil a R$ 100 mil</option>
+            <option value="De R$ 100 mil a R$ 500 mil">De R$ 100 mil a R$ 500 mil</option>
+            <option value="Acima de R$ 500 mil">Acima de R$ 500 mil</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Qual o principal desafio do seu marketing hoje?</label>
+          <textarea name="Desafio" class="form-textarea" rows="3" placeholder="Conte um pouco sobre o que tá travando..."></textarea>
+        </div>
+        
+        <button type="submit" class="btn-submit">ENVIAR E AGUARDAR CONTATO</button>
+        
+        <p class="form-note">Respondemos em até 24h úteis.</p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ========== FOOTER ========== -->
+  <footer class="footer">
+    <div class="footer-logo">
+      <!-- LOGO SÍMBOLO -->
+      <svg style="height:28px;width:auto;" viewBox="0 0 2869 1538" fill="none"><path d="M2866.31 0H16.0732C0.852781 0 -5.8621 19.4731 6.22468 28.874L1211.55 974.776L1385.24 1111.09C1430.9 1053.34 1472.53 992.459 1510.13 928.668C1634.13 718.268 1711.8 477.652 1729.04 220.696H2200.65C2181.4 586.88 2067.47 928.444 1882.81 1221.21C1843.41 1283.66 1800.89 1343.87 1755.45 1401.62L1928.92 1537.71C1974.58 1479.96 2017.33 1419.97 2057.4 1357.97C2270.93 1026.93 2401.87 638.137 2421.79 220.696H2866.54C2867.88 183.988 2869 147.28 2869 110.348C2869 73.416 2868.1 36.708 2866.54 0H2866.31ZM1334.65 791.013L607.878 220.696H1507.67C1491.56 426.395 1430.67 619.783 1334.65 791.013Z" fill="#E74011"/></svg>
+      <!-- NOME CARCARAR SVG -->
+      <svg style="height:16px;width:auto;" viewBox="0 0 1321 136" fill="none"><path d="M273.001 0.618039H206.425C185.549 0.618039 168.518 17.6141 168.518 38.49V135.11H194.716V93.4611H284.675V135.11H310.873V38.49C310.873 17.6141 293.877 0.618039 273.001 0.618039ZM284.675 67.2974H194.716V38.5244C194.716 32.0693 199.97 26.8503 206.39 26.8503H272.967C279.422 26.8503 284.641 32.1036 284.641 38.5244V67.2974H284.675ZM479.426 57.3059V36.9449C479.426 16.9274 463.151 0.618039 443.099 0.618039H337.071L336.934 134.526H363.132L363.269 93.6328H414.6L445.022 134.526H479.529L447.631 93.3237C465.554 91.0919 479.46 75.8127 479.46 57.3059H479.426ZM443.099 67.4348H363.269V26.8503H443.099C448.661 26.8503 453.193 31.3826 453.193 36.9449V57.3059C453.193 62.8682 448.661 67.4005 443.099 67.4005V67.4348ZM778.041 0H711.465C690.589 0 673.558 16.996 673.558 37.872V134.492H699.756V93.4611H789.715V134.492H815.913V37.872C815.913 16.996 798.917 0 778.041 0ZM789.715 67.2974H699.756V37.9063C699.756 31.4513 705.01 26.2323 711.43 26.2323H778.007C784.462 26.2323 789.681 31.4856 789.681 37.9063V67.2974H789.715ZM984.466 56.6878V36.3269C984.466 16.3093 968.191 0 948.139 0H842.111L841.905 134.526H868.103L868.309 93.0147H919.572L950.027 134.526H984.534L952.465 92.74C970.457 90.5769 984.431 75.2633 984.431 56.7222L984.466 56.6878ZM948.139 66.8168H868.309V26.2323H948.139C953.701 26.2323 958.233 30.7646 958.233 36.3269V56.6878C958.233 62.2502 953.701 66.7824 948.139 66.7824V66.8168ZM1115.11 0H1048.54C1027.66 0 1010.63 16.996 1010.63 37.872V134.492H1036.83V93.4611H1126.79V134.492H1152.98V37.872C1152.98 16.996 1135.99 0 1115.08 0H1115.11ZM1126.79 67.2974H1036.83V37.9063C1036.83 31.4513 1042.08 26.2323 1048.5 26.2323H1115.08C1121.53 26.2323 1126.75 31.4856 1126.75 37.9063V67.2974H1126.79ZM1288.27 92.7057C1306.26 90.5425 1320.23 75.229 1320.23 56.6878V36.3269C1320.23 16.3093 1303.96 0 1283.9 0H1177.88V134.526H1204.08V93.0147H1255.34L1285.79 134.526H1320.3L1288.23 92.74L1288.27 92.7057ZM1283.9 66.8168H1204.08V26.2323H1283.9C1289.47 26.2323 1294 30.7646 1294 36.3269V56.6878C1294 62.2502 1289.47 66.7824 1283.9 66.7824V66.8168ZM0 38.49V96.0019C0 116.878 16.996 133.874 37.872 133.874H142.32V107.676H37.872C31.4169 107.676 26.1979 102.423 26.1979 96.0019V38.49C26.1979 32.035 31.4513 26.816 37.872 26.816H142.32V0.618039H37.872C16.996 0.618039 0 17.6141 0 38.49ZM505.04 38.49V96.0019C505.04 116.878 522.036 133.874 542.912 133.874H647.36V107.676H542.912C536.457 107.676 531.238 102.423 531.238 96.0019V38.49C531.238 32.035 536.491 26.816 542.912 26.816H647.36V0.618039H542.912C522.036 0.618039 505.04 17.6141 505.04 38.49Z" fill="white"/></svg>
+    </div>
+    
+    <p class="footer-tag">Olhar com estratégia. Agir com propósito. Transformar visão em decisão.</p>
+    
+    <div class="footer-links">
+      <a href="https://instagram.com/carcarar.ag" target="_blank">@carcarar.ag</a>
+      <a href="https://wa.me/5586988912397" target="_blank">WhatsApp</a>
+      <a href="#">Parnaíba, PI</a>
+    </div>
+    
+    <p class="footer-copy">© 2026 Carcarar | Marketing Estratégico. Todos os direitos reservados.</p>
+  </footer>
+
+  <!-- ========== SCRIPTS ========== -->
+  <script>
+    // Scroll suave
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        document.querySelector(a.getAttribute('href'))?.scrollIntoView({behavior:'smooth'});
+      });
+    });
+    
+    // Animação ao carregar
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelector('.hero-content').style.opacity = '1';
+    });
+    
+    // Animação ao scroll (Intersection Observer)
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, observerOptions);
+    
+    // Observar elementos para animar
+    document.querySelectorAll('.circle-card, .solucao, .dif').forEach(el => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(20px)';
+      el.style.transition = 'all 0.6s ease-out';
+      observer.observe(el);
+    });
+  </script>
+
+  <!-- Script de envio para N8N -->
+  <script>
+    document.getElementById('leadForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const btn = this.querySelector('button[type="submit"]');
+      const originalText = btn.textContent;
+      btn.textContent = 'ENVIANDO...';
+      btn.disabled = true;
+      
+      const formData = new FormData(this);
+      const urlEncodedData = new URLSearchParams();
+      formData.forEach((value, key) => {
+        if (!key.startsWith('_')) urlEncodedData.append(key, value);
+      });
+      
+      try {
+        await fetch('https://gabriell98.app.n8n.cloud/webhook/19dadd67-84ac-44df-b51c-bf0a48dccc0e', {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: urlEncodedData.toString()
+        });
+        
+        window.location.href = 'https://carcarar.com.br/obrigado.html';
+      } catch (error) {
+        btn.textContent = originalText;
+        btn.disabled = false;
+        alert('Erro ao enviar. Tente novamente ou entre em contato pelo WhatsApp.');
+      }
+    });
+  </script>
+
+</body>
+</html>

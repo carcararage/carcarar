@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Obrigado! | Carcarar</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjg2OSIgaGVpZ2h0PSIxNTM4IiB2aWV3Qm94PSIwIDAgMjg2OSAxNTM4IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNMjg2Ni4zMSAwSDE2LjA3MzJDMC44NTI3ODEgMCAtNS44NjIxIDE5LjQ3MzEgNi4yMjQ2OCAyOC44NzRMMTIxMS41NSA5NzQuNzc2TDEzODUuMjQgMTExMS4wOUMxNDMwLjkgMTA1My4zNCAxNDcyLjUzIDk5Mi40NTkgMTUxMC4xMyA5MjguNjY4QzE2MzQuMTMgNzE4LjI2OCAxNzExLjggNDc3LjY1MiAxNzI5LjA0IDIyMC42OTZIMjIwMC42NUMyMTgxLjQgNTg2Ljg4IDIwNjcuNDcgOTI4LjQ0NCAxODgyLjgxIDEyMjEuMjFDMTg0My40MSAxMjgzLjY2IDE4MDAuODkgMTM0My44NyAxNzU1LjQ1IDE0MDEuNjJMMTkyOC45MiAxNTM3LjcxQzE5NzQuNTggMTQ3OS45NiAyMDE3LjMzIDE0MTkuOTcgMjA1Ny40IDEzNTcuOTdDMjI3MC45MyAxMDI2LjkzIDI0MDEuODcgNjM4LjEzNyAyNDIxLjc5IDIyMC42OTZIMjg2Ni41NEMyODY3Ljg4IDE4My45ODggMjg2OSAxNDcuMjggMjg2OSAxMTAuMzQ4QzI4NjkgNzMuNDE2IDI4NjguMSAzNi43MDggMjg2Ni41NCAwSDI4NjYuMzFaTTEzMzQuNjUgNzkxLjAxM0w2MDcuODc4IDIyMC42OTZIMTUwNy42N0MxNDkxLjU2IDQyNi4zOTUgMTQzMC42NyA2MTkuNzgzIDEzMzQuNjUgNzkxLjAxM1oiIGZpbGw9IiNFNzQwMTEiLz4KPC9zdmc+">
+  
+  <!-- Google Fonts - Lexend Deca -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --laranja: #E74011;
+      --rosa: #E8A090;
+      --preto: #0a0a0a;
+    }
+    
+    html, body {
+      min-height: 100%;
+    }
+    
+    body {
+      font-family: 'Lexend Deca', sans-serif;
+      background: linear-gradient(160deg, var(--preto) 0%, #151515 50%, #1a0f0a 100%);
+      color: #fff;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    /* Quadriculado */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    /* Marca d'água CENTRALIZADA */
+    .watermark {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 70%;
+      max-width: 600px;
+      opacity: 0.06;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    .container {
+      text-align: center;
+      max-width: 550px;
+      width: 100%;
+      position: relative;
+      z-index: 1;
+      animation: fadeIn 0.8s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Logo */
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 2.5rem;
+    }
+    
+    .logo svg:first-child { height: 36px; width: auto; }
+    .logo svg:last-child { height: 16px; width: auto; }
+    
+    /* Ícone check */
+    .check-icon {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(135deg, var(--laranja), #c44518);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(231,64,17,0.4); }
+      50% { box-shadow: 0 0 0 15px rgba(231,64,17,0); }
+    }
+    
+    .check-icon svg {
+      width: 32px;
+      height: 32px;
+      stroke: #fff;
+      stroke-width: 3;
+      fill: none;
+    }
+    
+    h1 {
+      font-size: clamp(1.6rem, 5vw, 2.5rem);
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+    }
+    
+    h1 .rosa { color: var(--rosa); }
+    
+    .subtitle {
+      font-size: 1rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 2rem;
+      font-weight: 300;
+      line-height: 1.6;
+    }
+    
+    /* Box próximos passos */
+    .box {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(231,64,17,0.2);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      text-align: left;
+    }
+    
+    .box-title {
+      font-size: 0.75rem;
+      color: var(--laranja);
+      letter-spacing: 2px;
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+    
+    .step {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 0.8rem;
+      align-items: flex-start;
+    }
+    
+    .step:last-child { margin-bottom: 0; }
+    
+    .step-num {
+      width: 26px;
+      height: 26px;
+      background: rgba(231,64,17,0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--laranja);
+      flex-shrink: 0;
+    }
+    
+    .step-text {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.9rem;
+      font-weight: 300;
+      line-height: 1.5;
+    }
+    
+    .step-text strong {
+      color: #fff;
+      font-weight: 500;
+    }
+    
+    /* BOTÃO */
+    .btn {
+      display: inline-block;
+      background: transparent;
+      color: var(--laranja);
+      border: 1.5px solid var(--laranja);
+      padding: 0.9rem 2rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border-radius: 50px;
+      text-decoration: none;
+      transition: all 0.4s ease;
+      letter-spacing: 1px;
+    }
+    
+    .btn:hover {
+      background: var(--laranja);
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(231,64,17,0.3);
+    }
+    
+    .social {
+      margin-top: 2rem;
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .social a {
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: color 0.3s;
+    }
+    
+    .social a:hover { color: var(--laranja); }
+    
+    /* MOBILE */
+    @media (max-width: 500px) {
+      body {
+        padding: 1.5rem 1rem;
+        justify-content: flex-start;
+        padding-top: 3rem;
+      }
+      .logo { margin-bottom: 2rem; }
+      .check-icon { width: 60px; height: 60px; margin-bottom: 1.2rem; }
+      .check-icon svg { width: 28px; height: 28px; }
+      .box { padding: 1.2rem; }
+      .watermark { width: 90%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Marca d'água CENTRALIZADA -->
+  <svg class="watermark" viewBox="0 0 2869 1538" fill="none"><path d="M2866.31 0H16.0732C0.852781 0 -5.8621 19.4731 6.22468 28.874L1211.55 974.776L1385.24 1111.09C1430.9 1053.34 1472.53 992.459 1510.13 928.668C1634.13 718.268 1711.8 477.652 1729.04 220.696H2200.65C2181.4 586.88 2067.47 928.444 1882.81 1221.21C1843.41 1283.66 1800.89 1343.87 1755.45 1401.62L1928.92 1537.71C1974.58 1479.96 2017.33 1419.97 2057.4 1357.97C2270.93 1026.93 2401.87 638.137 2421.79 220.696H2866.54C2867.88 183.988 2869 147.28 2869 110.348C2869 73.416 2868.1 36.708 2866.54 0H2866.31ZM1334.65 791.013L607.878 220.696H1507.67C1491.56 426.395 1430.67 619.783 1334.65 791.013Z" fill="#E74011"/></svg>
+
+  <div class="container">
+    
+    <!-- Logo -->
+    <div class="logo">
+      <svg viewBox="0 0 2869 1538" fill="none"><path d="M2866.31 0H16.0732C0.852781 0 -5.8621 19.4731 6.22468 28.874L1211.55 974.776L1385.24 1111.09C1430.9 1053.34 1472.53 992.459 1510.13 928.668C1634.13 718.268 1711.8 477.652 1729.04 220.696H2200.65C2181.4 586.88 2067.47 928.444 1882.81 1221.21C1843.41 1283.66 1800.89 1343.87 1755.45 1401.62L1928.92 1537.71C1974.58 1479.96 2017.33 1419.97 2057.4 1357.97C2270.93 1026.93 2401.87 638.137 2421.79 220.696H2866.54C2867.88 183.988 2869 147.28 2869 110.348C2869 73.416 2868.1 36.708 2866.54 0H2866.31ZM1334.65 791.013L607.878 220.696H1507.67C1491.56 426.395 1430.67 619.783 1334.65 791.013Z" fill="#E74011"/></svg>
+      <svg viewBox="0 0 1321 136" fill="none"><path d="M273.001 0.618039H206.425C185.549 0.618039 168.518 17.6141 168.518 38.49V135.11H194.716V93.4611H284.675V135.11H310.873V38.49C310.873 17.6141 293.877 0.618039 273.001 0.618039ZM284.675 67.2974H194.716V38.5244C194.716 32.0693 199.97 26.8503 206.39 26.8503H272.967C279.422 26.8503 284.641 32.1036 284.641 38.5244V67.2974H284.675ZM479.426 57.3059V36.9449C479.426 16.9274 463.151 0.618039 443.099 0.618039H337.071L336.934 134.526H363.132L363.269 93.6328H414.6L445.022 134.526H479.529L447.631 93.3237C465.554 91.0919 479.46 75.8127 479.46 57.3059H479.426ZM443.099 67.4348H363.269V26.8503H443.099C448.661 26.8503 453.193 31.3826 453.193 36.9449V57.3059C453.193 62.8682 448.661 67.4005 443.099 67.4005V67.4348ZM778.041 0H711.465C690.589 0 673.558 16.996 673.558 37.872V134.492H699.756V93.4611H789.715V134.492H815.913V37.872C815.913 16.996 798.917 0 778.041 0ZM789.715 67.2974H699.756V37.9063C699.756 31.4513 705.01 26.2323 711.43 26.2323H778.007C784.462 26.2323 789.681 31.4856 789.681 37.9063V67.2974H789.715ZM984.466 56.6878V36.3269C984.466 16.3093 968.191 0 948.139 0H842.111L841.905 134.526H868.103L868.309 93.0147H919.572L950.027 134.526H984.534L952.465 92.74C970.457 90.5769 984.431 75.2633 984.431 56.7222L984.466 56.6878ZM948.139 66.8168H868.309V26.2323H948.139C953.701 26.2323 958.233 30.7646 958.233 36.3269V56.6878C958.233 62.2502 953.701 66.7824 948.139 66.7824V66.8168ZM1115.11 0H1048.54C1027.66 0 1010.63 16.996 1010.63 37.872V134.492H1036.83V93.4611H1126.79V134.492H1152.98V37.872C1152.98 16.996 1135.99 0 1115.08 0H1115.11ZM1126.79 67.2974H1036.83V37.9063C1036.83 31.4513 1042.08 26.2323 1048.5 26.2323H1115.08C1121.53 26.2323 1126.75 31.4856 1126.75 37.9063V67.2974H1126.79ZM1288.27 92.7057C1306.26 90.5425 1320.23 75.229 1320.23 56.6878V36.3269C1320.23 16.3093 1303.96 0 1283.9 0H1177.88V134.526H1204.08V93.0147H1255.34L1285.79 134.526H1320.3L1288.23 92.74L1288.27 92.7057ZM1283.9 66.8168H1204.08V26.2323H1283.9C1289.47 26.2323 1294 30.7646 1294 36.3269V56.6878C1294 62.2502 1289.47 66.7824 1283.9 66.7824V66.8168ZM0 38.49V96.0019C0 116.878 16.996 133.874 37.872 133.874H142.32V107.676H37.872C31.4169 107.676 26.1979 102.423 26.1979 96.0019V38.49C26.1979 32.035 31.4513 26.816 37.872 26.816H142.32V0.618039H37.872C16.996 0.618039 0 17.6141 0 38.49ZM505.04 38.49V96.0019C505.04 116.878 522.036 133.874 542.912 133.874H647.36V107.676H542.912C536.457 107.676 531.238 102.423 531.238 96.0019V38.49C531.238 32.035 536.491 26.816 542.912 26.816H647.36V0.618039H542.912C522.036 0.618039 505.04 17.6141 505.04 38.49Z" fill="white"/></svg>
+    </div>
+    
+    <!-- Ícone check -->
+    <div class="check-icon">
+      <svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
+    </div>
+    
+    <h1>Recebemos sua <span class="rosa">mensagem!</span></h1>
+    
+    <p class="subtitle">
+      Obrigado por entrar em contato com a Carcarar.<br>
+      Agora é com a gente.
+    </p>
+    
+    <!-- Próximos passos -->
+    <div class="box">
+      <p class="box-title">PRÓXIMOS PASSOS</p>
+      
+      <div class="step">
+        <span class="step-num">1</span>
+        <p class="step-text">Vamos analisar suas informações com calma.</p>
+      </div>
+      
+      <div class="step">
+        <span class="step-num">2</span>
+        <p class="step-text">Em até <strong>24h úteis</strong>, entramos em contato pelo WhatsApp.</p>
+      </div>
+      
+      <div class="step">
+        <span class="step-num">3</span>
+        <p class="step-text">Se fizer sentido, marcamos uma conversa de clareza — sem compromisso.</p>
+      </div>
+    </div>
+    
+    <a href="https://carcarar.com.br" class="btn">VOLTAR PARA O SITE</a>
+    
+    <!-- Redes -->
+    <div class="social">
+      <a href="https://instagram.com/carcarar.ag" target="_blank">@carcarar.ag</a>
+      <a href="https://wa.me/5586988912397" target="_blank">WhatsApp</a>
+    </div>
+    
+  </div>
+
+</body>
+</html>
