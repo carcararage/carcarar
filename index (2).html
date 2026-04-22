@@ -1121,7 +1121,7 @@
     });
   </script>
 
-  <!-- Script de envio direto para ClickUp -->
+  <!-- Script de envio via Google Apps Script → ClickUp -->
   <script>
     document.getElementById('leadForm').addEventListener('submit', async function(e) {
       e.preventDefault();
@@ -1137,32 +1137,15 @@
         if (!key.startsWith('_')) dados[key] = value;
       });
       
-      const descricao = `📧 Email: ${dados.Email || '-'}
-📱 WhatsApp: ${dados.WhatsApp || '-'}
-🏢 Empresa: ${dados.Empresa || '-'}
-📊 Segmento: ${dados.Segmento || '-'}
-💰 Faturamento: ${dados.Faturamento || '-'}
-🎯 Desafio: ${dados.Desafio || '-'}
-📝 Mensagem: ${dados.Mensagem || '-'}`;
-
       try {
-        const response = await fetch('https://api.clickup.com/api/v2/list/901712951486/task', {
+        await fetch('https://script.google.com/macros/s/AKfycbwAWSktGnDkunV0HrbXe0lYdHwptQpG_u7BNL05kr4-tRhmcxDf8pfQIQDm0_LO88CG/exec', {
           method: 'POST',
-          headers: {
-            'Authorization': 'pk_296411609_R0TTUIA70M4WJECB0HZR74J2ZSM0SF7H',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: 'Lead Carcarar - ' + (dados.Nome || 'Sem nome'),
-            description: descricao
-          })
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dados)
         });
         
-        if (response.ok) {
-          window.location.href = 'https://carcarar.com.br/obrigado.html';
-        } else {
-          throw new Error('Erro na API');
-        }
+        window.location.href = 'https://carcarar.com.br/obrigado.html';
       } catch (error) {
         btn.textContent = originalText;
         btn.disabled = false;
