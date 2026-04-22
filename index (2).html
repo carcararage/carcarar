@@ -1121,7 +1121,7 @@
     });
   </script>
 
-  <!-- Script de envio para N8N -->
+  <!-- Script de envio direto para ClickUp -->
   <script>
     document.getElementById('leadForm').addEventListener('submit', async function(e) {
       e.preventDefault();
@@ -1132,20 +1132,37 @@
       btn.disabled = true;
       
       const formData = new FormData(this);
-      const urlEncodedData = new URLSearchParams();
+      const dados = {};
       formData.forEach((value, key) => {
-        if (!key.startsWith('_')) urlEncodedData.append(key, value);
+        if (!key.startsWith('_')) dados[key] = value;
       });
       
+      const descricao = `📧 Email: ${dados.Email || '-'}
+📱 WhatsApp: ${dados.WhatsApp || '-'}
+🏢 Empresa: ${dados.Empresa || '-'}
+📊 Segmento: ${dados.Segmento || '-'}
+💰 Faturamento: ${dados.Faturamento || '-'}
+🎯 Desafio: ${dados.Desafio || '-'}
+📝 Mensagem: ${dados.Mensagem || '-'}`;
+
       try {
-        await fetch('https://gabriell98.app.n8n.cloud/webhook/19dadd67-84ac-44df-b51c-bf0a48dccc0e', {
+        const response = await fetch('https://api.clickup.com/api/v2/list/901712951486/task', {
           method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: urlEncodedData.toString()
+          headers: {
+            'Authorization': 'pk_296411609_R0TTUIA70M4WJECB0HZR74J2ZSM0SF7H',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: 'Lead Carcarar - ' + (dados.Nome || 'Sem nome'),
+            description: descricao
+          })
         });
         
-        window.location.href = 'https://carcarar.com.br/obrigado.html';
+        if (response.ok) {
+          window.location.href = 'https://carcarar.com.br/obrigado.html';
+        } else {
+          throw new Error('Erro na API');
+        }
       } catch (error) {
         btn.textContent = originalText;
         btn.disabled = false;
@@ -1153,6 +1170,3 @@
       }
     });
   </script>
-
-</body>
-</html>
