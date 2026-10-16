@@ -1009,10 +1009,16 @@ button.chip:not([aria-pressed='true']):hover {
   position: sticky;
   bottom: calc(86px + env(safe-area-inset-bottom));
   z-index: 20;
+  padding-top: var(--space-6);
+  background: linear-gradient(to bottom, transparent, var(--bg) 55%);
+  pointer-events: none;
+}
+.actionbar > * {
+  pointer-events: auto;
 }
 @media (min-width: 1024px) {
   .actionbar {
-    bottom: var(--space-4);
+    bottom: var(--space-2);
   }
 }
 .two-col {
@@ -1055,4 +1061,14 @@ button.chip:not([aria-pressed='true']):hover {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: var(--space-3);
+}
+
+/* mapa no tema escuro: inverte os tiles claros do OpenStreetMap */
+:root[data-theme='dark'] .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.8);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.8);
+  }
 }

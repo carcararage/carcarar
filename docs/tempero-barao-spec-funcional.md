@@ -34,6 +34,22 @@ Há pontos a mais de 100 km de Parnaíba (o 99º percentil está a ~128 km do ce
 
 ---
 
+## 0.1 Regras acrescentadas depois do primeiro teste (16/10, noite)
+
+Pedidos da Barão após rodar o app localmente, e como ficaram:
+
+| Pedido | Como ficou |
+|---|---|
+| O mapa não aparecia | O provedor que eu usei (CARTO) passou a exigir chave. Troquei para OpenStreetMap, configurável por variável de ambiente |
+| "Cada estabelecimento tem o seu cadastro; ver dia e hora da visita, que fica salva como relatório" | Ficha com **relatório de visitas** (data, hora, dia da semana, resultado, valor, local confirmado), exportável em **CSV** e imprimível; e uma tela **Relatório** geral com filtros por período, vendedor e resultado |
+| "Cada vendedor só acessa os próprios clientes; o de outro aparece, mas já vinculado a outro vendedor" | Visibilidade em duas camadas (ver seção 4): detalhe só do que é seu; dos colegas, só nome/local/"vinculado a X" na lista e no mapa |
+| "Vai ter como cadastrar o cliente na própria plataforma" | Tela **Cadastrar cliente** (vendedor: entra na própria carteira; gestão: escolhe vendedor/status/classe), com GPS opcional e **barreira de duplicados** em tempo real |
+| "Já cadastrar aqui com essa listagem de clientes" (planilha do ERP) | Importador de **planilha XLSX/CSV** (relatório impresso do ERP ou tabela com cabeçalho). **Achado:** a planilha enviada tem 2.166 clientes mas só 1 com nome/código; o ERP não exportou o resto. O app avisa e não cria "clientes sem nome" por padrão |
+
+Cruzamento real: os **324 CNPJs do mapa do Earth estão todos na planilha**; 1.842 clientes existem só na planilha (com endereço e telefone, sem nome). Quando o ERP exportar com nomes, eles entram como pontos **sem localização**, e cada vendedor marca o ponto pelo GPS na primeira visita.
+
+---
+
 ## 1. Contexto do cliente (do que já temos nos documentos da Carcarar)
 
 - Parnaíba (PI), desde 2000, 30+ produtos naturais, linha **food service** (restaurantes, lanchonetes) e **varejo regional** (mercados, supermercados).
@@ -94,9 +110,10 @@ Isso evita um erro grave: importar 3 mil pontos e o painel ficar 100% vermelho n
 
 | | Vendedor | Promotor | Gestor | Admin |
 |---|---|---|---|---|
-| Vê | Própria carteira + pontos sem dono | Pontos sem dono* | Tudo | Tudo |
+| Vê | Própria carteira **em detalhe**; pontos livres; clientes dos colegas só como "vinculado a X" | Pontos sem dono* | Tudo | Tudo |
 | Registra visita | Em ponto que enxerga, só em nome próprio | Idem | Idem | Idem |
-| Edita ponto | Só telefone/contato/observações dos próprios | — | Tudo | Tudo |
+| Edita ponto | Só telefone/celular/contato/observações dos próprios; define localização **uma vez** se o ponto não tem | — | Tudo | Tudo |
+| Cadastra cliente | Sim, na própria carteira (barra duplicado) | Não | Sim (escolhe vendedor; pode forçar) | Sim |
 | Assume ponto sem dono | Sim | Não | Sim | Sim |
 | Valida visita fora do raio | Não | Não | Sim | Sim |
 | Importa KML, edita regras | Não | Não | Sim | Sim |
@@ -104,7 +121,7 @@ Isso evita um erro grave: importar 3 mil pontos e o painel ficar 100% vermelho n
 
 \* Promotor precisa de lista própria de lojas. Ainda não modelado (Fase 3).
 
-Vendedor **não vê a carteira de outro vendedor** (evita "roubo de cliente" e vazamento).
+Vendedor **não acessa a carteira de outro vendedor** (evita "roubo de cliente" e vazamento), mas vê que o cliente existe e de quem é, para não cadastrar nem visitar em duplicidade.
 
 ---
 
@@ -195,6 +212,7 @@ Verificado por testes automatizados, incluindo teste de mutação (quebrei de pr
 | 2 | Importador do Google Earth no navegador (pastas, polígonos, ERP, LGPD) | **Feito** |
 | 3 | App: Hoje, Mapa, Ficha, Registrar visita, Painel, Esquecidos, Pontos (edição em lote), Importar, Ajustes | **Feito (modo demonstração)** |
 | 4 | Design system da marca (tokens, componentes, claro/escuro, acessibilidade auditada) | **Feito (v0.1)** |
+| 4b | Cadastro na plataforma, duplicados, visibilidade entre vendedores, relatório de visitas, planilha do ERP | **Feito (modo demonstração)** |
 | 5 | **Supabase real**: login, multiusuário, fila offline com reenvio | Próximo |
 | 6 | Piloto com João e Gislandio (4–6 semanas, medir cobertura) | |
 | 7 | Aviso diário por WhatsApp; intervalo por cidade; reconciliar pinos movidos | |

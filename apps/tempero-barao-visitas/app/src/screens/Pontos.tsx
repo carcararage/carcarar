@@ -1,8 +1,8 @@
-import { Search, UserPlus } from 'lucide-react';
+import { Lock, Plus, Search, UserPlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  assumirPonto, atualizarPontos, listarPontos, type FiltroCarteira, type StatusComercial,
+  assumirPonto, atualizarPontos, listarPontos, listarPontosVisiveis, type Escopo, type FiltroCarteira, type StatusComercial,
 } from '../db/api';
 import { useAsync } from '../hooks/useAsync';
 import { inteiro, ROTULO_SEGMENTO, ROTULO_STATUS } from '../lib/formatar';
@@ -12,6 +12,105 @@ import { Campo, Carregando, SemaforoBadge, Vazio } from '../ui/componentes';
 import { useToast } from '../ui/toast';
 
 export default function Pontos() {
+  const { usuario } = useSessao();
+  return ehGestao(usuario) ? <PontosGestao /> : <PontosVendedor />;
+}
+
+function CabecalhoPontos({ sub }: { sub: string }) {
+  return (
+    <div className="row between">
+      <div>
+        <h1 className="h1">Pontos</h1>
+        <p className="muted small">{sub}</p>
+      </div>
+      <Link to="/cadastrar" className="btn btn-primary btn-sm"><Plus size={16} aria-hidden /> Cadastrar cliente</Link>
+    </div>
+  );
+}
+
+/** Vendedor: vê os dele e os livres em detalhe; os dos colegas aparecem só como "vinculado a …". */
+function PontosVendedor() {
+  const { usuario, recarregar } = useSessao();
+  const uid = usuario!.id;
+  const toast = useToast();
+  const [busca, setBusca] = useState('');
+  const [escopo, setEscopo] = useState<Escopo>('todos');
+  const [segmento, setSegmento] = useState('');
+  const [limite, setLimite] = useState(150);
+  const r = useAsync(() => listarPontosVisiveis(uid, { busca: busca.trim(), escopo, segmento, limite }), [uid, busca, escopo, segmento, limite]);
+  const aplicar = (fn: () => void) => { setLimite(150); fn(); };
+
+  return (
+    <div className="stack-lg">
+      <CabecalhoPontos sub="Sua carteira, os pontos livres para prospectar e os clientes dos colegas (só para você saber que já têm dono)." />
+      <div className="stack">
+        <div className="search">
+          <Search size={18} aria-hidden />
+          <input className="input" type="search" placeholder="Buscar nome ou bairro" aria-label="Buscar pontos" value={busca} onChange={(e) => aplicar(() => setBusca(e.target.value))} />
+        </div>
+        <div className="chips" role="group" aria-label="Quais pontos">
+          {([['todos', 'Todos'], ['meus', 'Meus clientes'], ['livres', 'Livres'], ['outros', 'De outros vendedores']] as [Escopo, string][]).map(([k, l]) => (
+            <button key={k} className="chip" aria-pressed={escopo === k} onClick={() => aplicar(() => setEscopo(k))}>{l}</button>
+          ))}
+        </div>
+        <select className="select" aria-label="Segmento" value={segmento} onChange={(e) => aplicar(() => setSegmento(e.target.value))}>
+          <option value="">Todos os segmentos</option>
+          {Object.entries(ROTULO_SEGMENTO).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+      </div>
+
+      {r.carregando && !r.dados ? <Carregando /> : !r.dados || r.dados.itens.length === 0 ? (
+        <Vazio titulo="Nenhum ponto encontrado" texto="Ajuste a busca ou cadastre o cliente." acao={<Link to="/cadastrar" className="btn btn-primary">Cadastrar cliente</Link>} />
+      ) : (
+        <>
+          <p className="small muted">{inteiro(r.dados.total)} ponto(s){r.dados.total > r.dados.itens.length ? ` · mostrando ${r.dados.itens.length}` : ''}</p>
+          <div className="list">
+            {r.dados.itens.map((p) => {
+              const outro = !p.meu && !p.livre;
+              const meta = [p.bairro, p.cidade, ROTULO_SEGMENTO[p.segmento]].filter(Boolean).join(' · ');
+              if (outro) {
+                return (
+                  <div key={p.id} className="item" style={{ opacity: 0.8 }} aria-label={`${p.nome}, vinculado a ${p.vendedorNome}`}>
+                    <div className="titulo">{p.nome}</div>
+                    <p className="meta ellipsis">{meta}</p>
+                    <div className="row" style={{ marginTop: 6, gap: 'var(--space-2)' }}><span className="chip"><Lock size={14} aria-hidden /> Vinculado a {p.vendedorNome ?? 'outro vendedor'}</span></div>
+                  </div>
+                );
+              }
+              return (
+                <div key={p.id} className="item row" style={{ alignItems: 'flex-start' }}>
+                  <Link to={`/ponto/${p.id}`} className="grow" style={{ color: 'inherit', textDecoration: 'none' }}>
+                    <div className="row between" style={{ alignItems: 'flex-start' }}>
+                      <span className="titulo">{p.nome}</span>
+                      {p.tier && <span className="chip chip-tier">{p.tier}</span>}
+                    </div>
+                    <p className="meta ellipsis">{meta}</p>
+                    <div className="row wrap" style={{ gap: 'var(--space-2)', marginTop: 6 }}>
+                      {p.status && <span className="chip">{ROTULO_STATUS[p.status]}</span>}
+                      {p.meu ? <SemaforoBadge s={p.semaforo} /> : <span className="chip">Livre</span>}
+                      {!p.temCoordenada && <span className="sem sem-vermelho">Sem localização</span>}
+                    </div>
+                  </Link>
+                  {p.livre && (
+                    <button className="btn btn-primary btn-sm" onClick={async () => {
+                      try { await assumirPonto(uid, p.id); toast('ok', `${p.nome} entrou na sua carteira.`); r.recarregar(); await recarregar(); }
+                      catch (e) { toast('erro', e instanceof Error ? e.message : String(e)); }
+                    }}><UserPlus size={16} aria-hidden /> Assumir</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {r.dados.total > r.dados.itens.length && (
+            <button className="btn btn-ghost" style={{ alignSelf: 'center' }} onClick={() => setLimite((n) => n + 150)}>Mostrar mais ({inteiro(r.dados.total - r.dados.itens.length)} restantes)</button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function PontosGestao() {
   const { usuario, usuarios, recarregar } = useSessao();
   const uid = usuario!.id;
   const gestao = ehGestao(usuario);
@@ -24,7 +123,8 @@ export default function Pontos() {
   const [lote, setLote] = useState(false);
 
   const filtro: FiltroCarteira = useMemo(() => ({ busca: busca.trim(), status, vendedorId, segmento }), [busca, status, vendedorId, segmento]);
-  const r = useAsync(() => listarPontos(uid, { ...filtro, limite: 150 }), [uid, filtro]);
+  const [limite, setLimite] = useState(150);
+  const r = useAsync(() => listarPontos(uid, { ...filtro, limite }), [uid, filtro, limite]);
   const vendedores = usuarios.filter((u) => u.papel === 'vendedor');
 
   const alternar = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -36,10 +136,7 @@ export default function Pontos() {
 
   return (
     <div className="stack-lg">
-      <div>
-        <h1 className="h1">Pontos</h1>
-        <p className="muted small">{gestao ? 'Toda a base importada do mapa.' : 'Sua carteira e os pontos livres para prospectar.'}</p>
-      </div>
+      <CabecalhoPontos sub="Toda a base: importada do Google Earth, de planilhas ou cadastrada no app." />
 
       <div className="stack">
         <div className="search">
@@ -109,6 +206,9 @@ export default function Pontos() {
               </div>
             ))}
           </div>
+          {r.dados.total > r.dados.itens.length && (
+            <button className="btn btn-ghost" style={{ alignSelf: 'center' }} onClick={() => setLimite((n) => n + 150)}>Mostrar mais ({inteiro(r.dados.total - r.dados.itens.length)} restantes)</button>
+          )}
         </>
       )}
 

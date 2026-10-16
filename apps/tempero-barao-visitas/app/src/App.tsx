@@ -10,6 +10,8 @@ import Pontos from './screens/Pontos';
 import Esquecidos from './screens/Esquecidos';
 import Importar from './screens/Importar';
 import Ajustes from './screens/Ajustes';
+import Cadastrar from './screens/Cadastrar';
+import Relatorio from './screens/Relatorio';
 import DesignSystem from './screens/DesignSystem';
 import { Carregando } from './ui/componentes';
 import { Logo } from './ui/logo';
@@ -55,6 +57,8 @@ export default function App() {
           />
           <Route path="pontos" element={<Pontos />} />
           <Route path="ponto/:id" element={<Ponto />} />
+          <Route path="cadastrar" element={<Cadastrar />} />
+          <Route path="relatorio" element={<Relatorio />} />
           <Route path="importar" element={ehGestao(usuario) ? <Importar /> : <Navigate to="/" replace />} />
           <Route path="ajustes" element={<Ajustes />} />
           <Route path="*" element={<Navigate to="/" replace />} />

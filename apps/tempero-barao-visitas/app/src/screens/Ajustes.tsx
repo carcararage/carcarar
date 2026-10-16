@@ -53,6 +53,12 @@ export default function Ajustes() {
       {gestao && (
         <>
           <section className="card stack">
+            <h2 className="card-title">Dados</h2>
+            <p className="small muted">Traga clientes do Google Earth (KML/KMZ) ou de planilha do ERP.</p>
+            <Link to="/importar" className="btn btn-soft" style={{ alignSelf: 'flex-start' }}>Importar mapa ou planilha</Link>
+          </section>
+
+          <section className="card stack">
             <h2 className="card-title">Regras de cadência</h2>
             <p className="small muted">Intervalo-alvo entre visitas (em dias) e peso na prioridade da fila. Valores iniciais são um ponto de partida: calibre com a operação.</p>
             {[...porStatus.entries()].map(([status, lista]) => (

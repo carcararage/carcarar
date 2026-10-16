@@ -1,12 +1,14 @@
 import {
-  ChevronLeft, Locate, MapPin, MessageCircle, Navigation, Pencil, Phone, TriangleAlert, UserPlus,
+  ChevronLeft, Download, Locate, Lock, MapPin, MapPinOff, MessageCircle, Navigation, Pencil, Phone, Printer, TriangleAlert, UserPlus,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { assumirPonto, atualizarPontos, editarContato, ficha, type Ficha, type StatusComercial } from '../db/api';
+import { assumirPonto, atualizarPontos, definirLocalizacao, editarContato, ficha, resumoPonto, type Ficha, type StatusComercial } from '../db/api';
+import { useLocalizacao } from '../hooks/useLocalizacao';
+import { baixar, nomeSeguro, paraCsv } from '../lib/csv';
 import { useAsync } from '../hooks/useAsync';
 import {
-  dataHora, distanciaTexto, quando, ROTULO_RESULTADO, ROTULO_SEGMENTO, ROTULO_STATUS, ROTULO_VALIDACAO, textoPrazo, brl,
+  dataHoraCompleta, distanciaTexto, quando, soData, soHora, ROTULO_RESULTADO, ROTULO_SEGMENTO, ROTULO_STATUS, ROTULO_VALIDACAO, textoPrazo, brl,
 } from '../lib/formatar';
 import { ehCelular, linkRota, linkTel, linkWhats, linkWaze } from '../lib/links';
 import { ehGestao, useSessao } from '../state/sessao';
@@ -28,9 +30,10 @@ export default function Ponto() {
 
   if (f.carregando && !f.dados) return <Carregando linhas={3} />;
   const p = f.dados;
-  if (!p) return <Vazio titulo="Ponto não encontrado" texto="Ele pode ter sido removido ou não faz parte da sua carteira." acao={<Link className="btn btn-primary" to="/pontos">Ver pontos</Link>} />;
+  if (!p) return <PontoIndisponivel uid={uid} id={id!} />;
 
   const meu = p.vendedorId === uid;
+  const semLocal = p.lat == null || p.lng == null;
   const livre = p.vendedorId == null && p.status !== 'perdido';
   const fone = p.celular ?? p.telefone;
   const c = p.cadencia;
@@ -65,12 +68,25 @@ export default function Ponto() {
         </div>
       )}
 
+      {semLocal && (meu || gestao) && <DefinirLocal uid={uid} id={p.id} onFeito={f.recarregar} />}
+
       {p.coordenadaSuspeita && (
         <div className="banner perigo">
           <TriangleAlert size={20} aria-hidden />
           <span>Localização removida na importação: {p.coordenadaSuspeita}. Corrija no mapa de origem e reimporte.</span>
         </div>
       )}
+
+      <div>
+        {livre && !gestao ? (
+          <button className="btn btn-primary btn-lg btn-block" onClick={async () => {
+            try { await assumirPonto(uid, p.id); toast('ok', `${p.nome} entrou na sua carteira.`); f.recarregar(); await recarregar(); }
+            catch (e) { toast('erro', e instanceof Error ? e.message : String(e)); }
+          }}><UserPlus size={20} aria-hidden /> Assumir este ponto</button>
+        ) : (meu || gestao) && p.status !== 'perdido' ? (
+          <button className="btn btn-primary btn-lg btn-block" onClick={() => setVisitando(true)}><Locate size={20} aria-hidden /> Registrar visita</button>
+        ) : null}
+      </div>
 
       <div className="row wrap" style={{ gap: 'var(--space-2)' }}>
         {p.lat != null && p.lng != null && (
@@ -112,7 +128,15 @@ export default function Ponto() {
         </section>
 
         <section className="card stack" aria-labelledby="hist">
-          <h2 id="hist" className="card-title">Histórico de visitas</h2>
+          <div className="row between wrap" style={{ gap: 'var(--space-2)' }}>
+            <h2 id="hist" className="card-title">Relatório de visitas</h2>
+            {p.visitas.length > 0 && (
+              <div className="row no-print" style={{ gap: 'var(--space-2)' }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => window.print()} aria-label="Imprimir relatório"><Printer size={14} aria-hidden /></button>
+                <button className="btn btn-ghost btn-sm" onClick={() => exportar(p)}><Download size={14} aria-hidden /> CSV</button>
+              </div>
+            )}
+          </div>
           {p.visitas.length === 0 ? (
             <p className="muted small">Nenhuma visita registrada ainda.</p>
           ) : (
@@ -120,7 +144,7 @@ export default function Ponto() {
               {p.visitas.map((v) => (
                 <li key={v.id}>
                   <div className="row between">
-                    <strong className="small">{dataHora(v.checkinEm)}</strong>
+                    <strong className="small">{dataHoraCompleta(v.checkinEm)}</strong>
                     <span className={`sem ${v.validacao === 'confirmada' || v.validacao === 'validada_gestor' ? 'sem-verde' : 'sem-amarelo'}`}>{ROTULO_VALIDACAO[v.validacao]}</span>
                   </div>
                   <div className="small">{v.vendedor}{v.resultado ? ` · ${ROTULO_RESULTADO[v.resultado]}` : ''}{v.valorPedido ? ` · ${brl(v.valorPedido)}` : ''}</div>
@@ -135,17 +159,6 @@ export default function Ponto() {
         </section>
       </div>
 
-      <div className="actionbar">
-        {livre && !gestao ? (
-          <button className="btn btn-primary btn-lg btn-block" onClick={async () => {
-            try { await assumirPonto(uid, p.id); toast('ok', `${p.nome} entrou na sua carteira.`); f.recarregar(); await recarregar(); }
-            catch (e) { toast('erro', e instanceof Error ? e.message : String(e)); }
-          }}><UserPlus size={20} aria-hidden /> Assumir este ponto</button>
-        ) : (meu || gestao) && p.status !== 'perdido' ? (
-          <button className="btn btn-primary btn-lg btn-block" onClick={() => setVisitando(true)}><Locate size={20} aria-hidden /> Registrar visita</button>
-        ) : null}
-      </div>
-
       {visitando && <VisitaSheet usuarioId={uid} ponto={{ id: p.id, nome: p.nome, lat: p.lat, lng: p.lng }} onFechar={() => setVisitando(false)} onSalvo={f.recarregar} />}
       {editando && <EditarContato p={p} onFechar={() => setEditando(false)} onSalvo={() => { setEditando(false); f.recarregar(); }} uid={uid} />}
       {classificando && (
@@ -153,6 +166,54 @@ export default function Ponto() {
           vendedores={usuarios.filter((u) => u.papel === 'vendedor')}
           onSalvo={() => { setClassificando(false); f.recarregar(); }} />
       )}
+    </div>
+  );
+}
+
+function exportar(p: Ficha) {
+  baixar(`visitas-${nomeSeguro(p.nome)}.csv`, paraCsv([
+    ['Cliente', 'Código ERP', 'Data', 'Hora', 'Vendedor', 'Tipo', 'Resultado', 'Valor (R$)', 'Próximo passo', 'Retorno combinado', 'Observação', 'Validação', 'Distância do ponto (m)'],
+    ...p.visitas.map((v) => [p.nome, p.codigoErp, soData(v.checkinEm), soHora(v.checkinEm), v.vendedor, v.tipo,
+      v.resultado ? ROTULO_RESULTADO[v.resultado] : '', v.valorPedido?.toFixed(2).replace('.', ','), v.proximoPasso, v.retornoEm, v.observacao,
+      ROTULO_VALIDACAO[v.validacao], v.distanciaM != null ? Math.round(v.distanciaM) : '']),
+  ]));
+}
+
+/** Cliente que veio sem coordenada (ou com coordenada suspeita): o dono marca o ponto com o GPS, uma vez. */
+function DefinirLocal({ uid, id, onFeito }: { uid: string; id: string; onFeito: () => void }) {
+  const toast = useToast();
+  const { status, pedir } = useLocalizacao();
+  return (
+    <div className="banner">
+      <MapPinOff size={20} aria-hidden />
+      <span className="grow">Este cliente está <strong>sem localização</strong>, então não aparece no mapa nem confirma check-in. Se você está no local, marque o ponto agora.</span>
+      <button className="btn btn-dark btn-sm" disabled={status === 'buscando'} onClick={async () => {
+        const pos = await pedir();
+        if (!pos) { toast('erro', 'Não consegui sua localização. Permita o acesso à localização no navegador.'); return; }
+        try { await definirLocalizacao(uid, id, pos.lat, pos.lng); toast('ok', 'Localização do cliente definida.'); onFeito(); }
+        catch (e) { toast('erro', e instanceof Error ? e.message : String(e)); }
+      }}><Locate size={16} aria-hidden /> {status === 'buscando' ? 'Localizando…' : 'Definir aqui'}</button>
+    </div>
+  );
+}
+
+/** Ponto que existe mas não é do usuário: só o mínimo, "vinculado a outro vendedor". */
+function PontoIndisponivel({ uid, id }: { uid: string; id: string }) {
+  const r = useAsync(() => resumoPonto(uid, id), [uid, id]);
+  if (r.carregando) return <Carregando linhas={1} />;
+  const p = r.dados;
+  if (!p) return <Vazio titulo="Ponto não encontrado" texto="Ele pode ter sido removido." acao={<Link className="btn btn-primary" to="/pontos">Ver pontos</Link>} />;
+  return (
+    <div className="stack-lg">
+      <div>
+        <Link to="/pontos" className="back"><ChevronLeft size={18} aria-hidden /> Voltar</Link>
+        <h1 className="h1" style={{ marginTop: 'var(--space-1)' }}>{p.nome}</h1>
+        <p className="muted small">{[p.bairro, p.cidade].filter(Boolean).join(' · ')}</p>
+      </div>
+      <div className="banner">
+        <Lock size={20} aria-hidden />
+        <span><strong>Vinculado a {p.vendedorNome ?? 'outro vendedor'}.</strong> Este cliente está na carteira de outro vendedor: você vê só o nome e o local, para não cadastrar nem visitar em duplicidade. Para qualquer mudança, fale com a gestão.</span>
+      </div>
     </div>
   );
 }

@@ -134,7 +134,7 @@ export function parseDescricaoErp(textoBruto: string): DadosErp {
   return out;
 }
 
-function telefoneValido(s: string | undefined): string | undefined {
+export function telefoneValido(s: string | undefined): string | undefined {
   const t = vazioParaUndef(s?.split('\n')[0]);
   if (!t) return undefined;
   const digitos = t.replace(/\D/g, '');

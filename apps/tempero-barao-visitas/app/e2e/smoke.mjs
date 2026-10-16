@@ -17,7 +17,7 @@ const ctx = await browser.newContext({
   geolocation: { latitude: -2.9055, longitude: -41.7765 }, permissions: ['geolocation'],
 });
 // mapa: sem internet no CI → tiles falham em silêncio
-await ctx.route(/basemaps\.cartocdn\.com/, (r) => r.abort());
+await ctx.route(/tile\.openstreetmap\.org/, (r) => r.abort());
 const page = await ctx.newPage();
 const erros = [];
 page.on('pageerror', (e) => erros.push('pageerror: ' + e.message));
@@ -91,7 +91,7 @@ ok(/Visita registrada|aguarda/i.test(aviso), 'visita salva com retorno do servid
 await page.locator('article.item').first().locator('a.titulo').click().catch(() => {});
 await page.goto(BASE + '#/pontos');
 await page.getByRole('link', { name: new RegExp(nome.slice(0, 12)) }).first().click();
-await page.getByRole('heading', { name: 'Histórico de visitas' }).waitFor();
+await page.getByRole('heading', { name: 'Relatório de visitas' }).waitFor();
 await page.waitForTimeout(400);
 await shot('11-ficha');
 

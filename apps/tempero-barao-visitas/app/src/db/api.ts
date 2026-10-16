@@ -1,5 +1,5 @@
 import type { ItemImportado, RegiaoImportada } from '../kml/parseKml';
-import type { Vendedor } from '../kml/mapeamento';
+import { slug, type Vendedor } from '../kml/mapeamento';
 import { abrirBanco, comoUsuario } from './banco';
 
 /**
@@ -29,6 +29,7 @@ export interface Usuario {
 }
 
 const num = (v: unknown) => (v == null ? null : Number(v));
+const semAcento = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 // ---------------------------------------------------------------------------------------------
 // Usuários (modo demonstração: sem senha; no Supabase entra o Auth)
@@ -64,6 +65,13 @@ export async function garantirVendedores(vendedores: Vendedor[]): Promise<Usuari
     out.push(ja ?? (await criarUsuario(v.nome, 'vendedor', v.chave)));
   }
   return out;
+}
+
+/** Modo demo: dá ao vendedor a chave de vínculo usada nas importações (no Supabase, o admin define). */
+export async function garantirChaveImport(id: string, nome: string): Promise<string> {
+  const db = await abrirBanco();
+  await db.query(`update perfis set chave_import = coalesce(chave_import, $2) where id = $1`, [id, slug(nome)]);
+  return (await db.query<{ c: string }>(`select chave_import as c from perfis where id = $1`, [id])).rows[0].c;
 }
 
 export async function totalPontos(): Promise<number> {
@@ -150,36 +158,118 @@ export interface PontoMapa {
   nome: string;
   lat: number;
   lng: number;
-  status: StatusComercial;
-  tier: 'A' | 'B' | 'C';
+  /** null quando o ponto é de OUTRO vendedor (não mostramos status/classe) */
+  status: StatusComercial | null;
+  tier: 'A' | 'B' | 'C' | null;
   segmento: string;
   vendedorId: string | null;
+  vendedorNome: string | null;
+  meu: boolean;
+  livre: boolean;
   semaforo: Semaforo | null;
   diasAtraso: number | null;
 }
 
+/** Todos os pontos com localização. Os de outros vendedores vêm só com o mínimo (nome, local, de quem é). */
 export async function pontosMapa(uid: string): Promise<PontoMapa[]> {
   return comoUsuario(uid, async (tx) => {
     const r = await tx.query<Record<string, unknown>>(
-      `select e.id, e.nome, e.lat, e.lng, e.status::text, e.tier::text, e.segmento::text, e.vendedor_id,
-              c.semaforo, c.dias_atraso
-         from estabelecimentos e
-         left join v_cadencia c on c.estabelecimento_id = e.id
-        where e.lat is not null and e.status <> 'perdido'`,
+      `select p.id, p.nome, p.lat, p.lng, p.status::text, p.tier::text, p.segmento::text, p.vendedor_id,
+              p.vendedor_nome, p.meu, p.livre, c.semaforo, c.dias_atraso
+         from v_pontos_mapa p
+         left join v_cadencia c on c.estabelecimento_id = p.id
+        where p.lat is not null`,
     );
     return r.rows.map((x) => ({
       id: x.id as string,
       nome: x.nome as string,
       lat: Number(x.lat),
       lng: Number(x.lng),
-      status: x.status as StatusComercial,
-      tier: x.tier as 'A' | 'B' | 'C',
+      status: (x.status as StatusComercial | null) ?? null,
+      tier: (x.tier as 'A' | 'B' | 'C' | null) ?? null,
       segmento: x.segmento as string,
       vendedorId: x.vendedor_id as string | null,
+      vendedorNome: x.vendedor_nome as string | null,
+      meu: x.meu as boolean,
+      livre: x.livre as boolean,
       semaforo: (x.semaforo as Semaforo | null) ?? null,
       diasAtraso: num(x.dias_atraso),
     }));
   });
+}
+
+export interface PontoVisivel {
+  id: string;
+  nome: string;
+  segmento: string;
+  bairro: string | null;
+  cidade: string | null;
+  temCoordenada: boolean;
+  vendedorId: string | null;
+  vendedorNome: string | null;
+  meu: boolean;
+  livre: boolean;
+  status: StatusComercial | null;
+  tier: 'A' | 'B' | 'C' | null;
+  semaforo: Semaforo | null;
+}
+
+export type Escopo = 'todos' | 'meus' | 'livres' | 'outros';
+
+/** Lista para o vendedor: os dele, os livres e — só como "vinculado a Fulano" — os dos colegas. */
+export async function listarPontosVisiveis(
+  uid: string,
+  f: { busca?: string; escopo?: Escopo; segmento?: string; limite?: number } = {},
+): Promise<{ total: number; itens: PontoVisivel[] }> {
+  return comoUsuario(uid, async (tx) => {
+    const cond: string[] = [];
+    const par: unknown[] = [];
+    const p = (v: unknown) => (par.push(v), `$${par.length}`);
+    if (f.busca) {
+      const q = `%${semAcento(f.busca).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}%`;
+      cond.push(`(norm_texto(v.nome) like ${p(q)} or norm_texto(v.bairro) like ${p(q)})`);
+    }
+    if (f.segmento) cond.push(`v.segmento = ${p(f.segmento)}::segmento`);
+    if (f.escopo === 'meus') cond.push('v.meu');
+    else if (f.escopo === 'livres') cond.push('v.livre');
+    else if (f.escopo === 'outros') cond.push('(not v.meu and not v.livre)');
+    const where = cond.length ? `where ${cond.join(' and ')}` : '';
+    const total = (await tx.query<{ n: number }>(`select count(*)::int as n from v_pontos_mapa v ${where}`, par)).rows[0].n;
+    const r = await tx.query<Record<string, unknown>>(
+      `select v.id, v.nome, v.segmento::text, v.bairro, v.cidade, (v.lat is not null) as tem_coord, v.vendedor_id,
+              v.vendedor_nome, v.meu, v.livre, v.status::text, v.tier::text, c.semaforo
+         from v_pontos_mapa v
+         left join v_cadencia c on c.estabelecimento_id = v.id
+         ${where}
+        order by v.meu desc, v.livre desc, v.nome
+        limit ${Number(f.limite ?? 150)}`,
+      par,
+    );
+    return {
+      total,
+      itens: r.rows.map((x) => ({
+        id: x.id as string,
+        nome: x.nome as string,
+        segmento: x.segmento as string,
+        bairro: x.bairro as string | null,
+        cidade: x.cidade as string | null,
+        temCoordenada: x.tem_coord as boolean,
+        vendedorId: x.vendedor_id as string | null,
+        vendedorNome: x.vendedor_nome as string | null,
+        meu: x.meu as boolean,
+        livre: x.livre as boolean,
+        status: (x.status as StatusComercial | null) ?? null,
+        tier: (x.tier as 'A' | 'B' | 'C' | null) ?? null,
+        semaforo: (x.semaforo as Semaforo | null) ?? null,
+      })),
+    };
+  });
+}
+
+/** O que se pode saber de um ponto que NÃO é seu (para a tela "vinculado a outro vendedor"). */
+export async function resumoPonto(uid: string, id: string): Promise<PontoVisivel | null> {
+  const r = await listarPontosVisiveis(uid, { limite: 100000 });
+  return r.itens.find((p) => p.id === id) ?? null;
 }
 
 export interface VisitaResumo {
@@ -704,4 +794,179 @@ export async function salvarRaioCheckin(uid: string, metros: number): Promise<vo
   await comoUsuario(uid, (tx) =>
     tx.query(`update configuracoes set valor = to_jsonb($1::int) where chave = 'raio_checkin_m'`, [metros]),
   );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Cadastro na plataforma, duplicados e localização (migração 0004)
+// ---------------------------------------------------------------------------------------------
+
+export interface Duplicado {
+  id: string;
+  nome: string;
+  bairro: string | null;
+  cidade: string | null;
+  vendedorNome: string | null;
+  meu: boolean;
+  livre: boolean;
+  motivo: string;
+}
+
+export async function buscarDuplicados(
+  uid: string,
+  d: { nome?: string; cnpj?: string; codigoErp?: string; cidade?: string },
+): Promise<Duplicado[]> {
+  return comoUsuario(uid, async (tx) => {
+    const r = await tx.query<Record<string, unknown>>(
+      `select id, nome, bairro, cidade, vendedor_nome, meu, livre, motivo
+         from buscar_duplicados($1, $2, $3, $4)`,
+      [d.nome ?? null, d.cnpj ?? null, d.codigoErp ?? null, d.cidade ?? null],
+    );
+    return r.rows.map((x) => ({
+      id: x.id as string,
+      nome: x.nome as string,
+      bairro: x.bairro as string | null,
+      cidade: x.cidade as string | null,
+      vendedorNome: x.vendedor_nome as string | null,
+      meu: x.meu as boolean,
+      livre: x.livre as boolean,
+      motivo: x.motivo as string,
+    }));
+  });
+}
+
+export interface NovoCliente {
+  nome: string;
+  razaoSocial?: string;
+  cnpj?: string;
+  codigoErp?: string;
+  telefone?: string;
+  celular?: string;
+  contato?: string;
+  endereco?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+  cep?: string;
+  segmento?: string;
+  tier?: 'A' | 'B' | 'C';
+  status?: StatusComercial;
+  vendedorId?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  observacoes?: string;
+  /** só a gestão: cadastra mesmo havendo possível duplicado */
+  forcar?: boolean;
+}
+
+export class ErroDuplicado extends Error {
+  constructor(
+    message: string,
+    public readonly existenteId: string | null,
+  ) {
+    super(message);
+    this.name = 'ErroDuplicado';
+  }
+}
+
+export async function cadastrarCliente(uid: string, c: NovoCliente): Promise<string> {
+  const payload = {
+    nome: c.nome, razao_social: c.razaoSocial, cnpj: c.cnpj, codigo_erp: c.codigoErp, telefone: c.telefone,
+    celular: c.celular, contato: c.contato, endereco: c.endereco, bairro: c.bairro, cidade: c.cidade, uf: c.uf,
+    cep: c.cep, segmento: c.segmento, tier: c.tier, status: c.status, vendedor_id: c.vendedorId ?? undefined,
+    lat: c.lat ?? undefined, lng: c.lng ?? undefined, observacoes: c.observacoes, forcar: c.forcar,
+  };
+  try {
+    return await comoUsuario(uid, async (tx) => {
+      const r = await tx.query<{ id: string }>(`select cadastrar_estabelecimento($1::jsonb) as id`, [JSON.stringify(payload)]);
+      return r.rows[0].id;
+    });
+  } catch (e) {
+    const err = e as { code?: string; message?: string; detail?: string };
+    if (err.code === '23505') throw new ErroDuplicado(err.message ?? 'Cliente já cadastrado', err.detail ?? null);
+    throw e;
+  }
+}
+
+export async function definirLocalizacao(uid: string, id: string, lat: number, lng: number): Promise<void> {
+  await comoUsuario(uid, (tx) => tx.query(`select definir_localizacao($1, $2::float8, $3::float8)`, [id, lat, lng]));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Relatório de visitas
+// ---------------------------------------------------------------------------------------------
+
+export interface LinhaRelatorio {
+  id: string;
+  checkinEm: Date;
+  checkoutEm: Date | null;
+  pontoId: string;
+  ponto: string;
+  codigoErp: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  vendedor: string;
+  tipo: TipoVisita;
+  resultado: ResultadoVisita | null;
+  valorPedido: number | null;
+  proximoPasso: string | null;
+  retornoEm: string | null;
+  observacao: string | null;
+  validacao: Validacao;
+  distanciaM: number | null;
+}
+
+export interface FiltroRelatorio {
+  /** AAAA-MM-DD, inclusive (fuso de Parnaíba) */
+  de?: string;
+  ate?: string;
+  vendedorId?: string;
+  pontoId?: string;
+  resultado?: ResultadoVisita | '';
+  limite?: number;
+}
+
+export async function relatorioVisitas(uid: string, f: FiltroRelatorio = {}): Promise<LinhaRelatorio[]> {
+  return comoUsuario(uid, async (tx) => {
+    const cond: string[] = [];
+    const par: unknown[] = [];
+    const p = (v: unknown) => (par.push(v), `$${par.length}`);
+    const dia = `(v.checkin_em at time zone 'America/Fortaleza')::date`;
+    if (f.de) cond.push(`${dia} >= ${p(f.de)}::date`);
+    if (f.ate) cond.push(`${dia} <= ${p(f.ate)}::date`);
+    if (f.vendedorId) cond.push(`v.usuario_id = ${p(f.vendedorId)}`);
+    if (f.pontoId) cond.push(`v.estabelecimento_id = ${p(f.pontoId)}`);
+    if (f.resultado) cond.push(`v.resultado = ${p(f.resultado)}::resultado_visita`);
+    const where = cond.length ? `where ${cond.join(' and ')}` : '';
+    const r = await tx.query<Record<string, unknown>>(
+      `select v.id, v.checkin_em, v.checkout_em, e.id as ponto_id, e.nome as ponto, e.codigo_erp, e.bairro, e.cidade,
+              p.nome as vendedor, v.tipo::text, v.resultado::text, v.valor_pedido, v.proximo_passo,
+              to_char(v.retorno_em, 'YYYY-MM-DD') as retorno_em, v.observacao, v.validacao::text, v.distancia_m
+         from visitas v
+         join estabelecimentos e on e.id = v.estabelecimento_id
+         join perfis p on p.id = v.usuario_id
+         ${where}
+        order by v.checkin_em desc
+        limit ${Number(f.limite ?? 1000)}`,
+      par,
+    );
+    return r.rows.map((x) => ({
+      id: x.id as string,
+      checkinEm: x.checkin_em as Date,
+      checkoutEm: (x.checkout_em as Date | null) ?? null,
+      pontoId: x.ponto_id as string,
+      ponto: x.ponto as string,
+      codigoErp: x.codigo_erp as string | null,
+      bairro: x.bairro as string | null,
+      cidade: x.cidade as string | null,
+      vendedor: x.vendedor as string,
+      tipo: x.tipo as TipoVisita,
+      resultado: (x.resultado as ResultadoVisita | null) ?? null,
+      valorPedido: num(x.valor_pedido),
+      proximoPasso: x.proximo_passo as string | null,
+      retornoEm: x.retorno_em as string | null,
+      observacao: x.observacao as string | null,
+      validacao: x.validacao as Validacao,
+      distanciaM: num(x.distancia_m),
+    }));
+  });
 }

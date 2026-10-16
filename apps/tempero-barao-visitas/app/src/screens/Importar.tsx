@@ -8,11 +8,12 @@ import { parseKml, type ResultadoKml } from '../kml/parseKml';
 import { inteiro, ROTULO_SEGMENTO, ROTULO_STATUS } from '../lib/formatar';
 import { useSessao } from '../state/sessao';
 import { Campo } from '../ui/componentes';
+import ImportarPlanilha from './ImportarPlanilha';
 import { useToast } from '../ui/toast';
 
 const STATUS_OPCOES = ['ativo', 'inativo', 'em_prospeccao', 'prospecto', 'perdido'] as const;
 
-export default function Importar() {
+function ImportarKml() {
   const { usuario, recarregar } = useSessao();
   const toast = useToast();
   const input = useRef<HTMLInputElement>(null);
@@ -82,6 +83,7 @@ export default function Importar() {
         <div className="row wrap">
           <Link to="/" className="btn btn-primary btn-lg">Ir para o painel</Link>
           <Link to="/pontos" className="btn btn-ghost btn-lg">Revisar classe e segmento</Link>
+          <button className="btn btn-soft btn-lg" onClick={() => { setFeito(null); setRes(null); setArquivo(''); }}>Importar outro arquivo</button>
         </div>
       </div>
     );
@@ -229,6 +231,19 @@ export default function Importar() {
           {itens.length === 0 && <div className="banner perigo"><TriangleAlert size={20} aria-hidden /> Nenhuma pasta selecionada.</div>}
         </>
       )}
+    </div>
+  );
+}
+
+export default function Importar() {
+  const [modo, setModo] = useState<'kml' | 'planilha'>('kml');
+  return (
+    <div className="stack-lg">
+      <div className="segmented" role="group" aria-label="Origem dos dados" style={{ alignSelf: 'flex-start' }}>
+        <button aria-pressed={modo === 'kml'} onClick={() => setModo('kml')}>Mapa do Google Earth</button>
+        <button aria-pressed={modo === 'planilha'} onClick={() => setModo('planilha')}>Planilha de clientes</button>
+      </div>
+      {modo === 'kml' ? <ImportarKml /> : <ImportarPlanilha />}
     </div>
   );
 }

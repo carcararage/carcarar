@@ -11,7 +11,7 @@ const axePath = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'pt-BR', timezoneId: 'America/Fortaleza',
   geolocation: { latitude: -2.9055, longitude: -41.7765 }, permissions: ['geolocation'] });
-await ctx.route(/basemaps\.cartocdn\.com/, (r) => r.abort());
+await ctx.route(/tile\.openstreetmap\.org/, (r) => r.abort());
 const page = await ctx.newPage();
 
 await page.goto(BASE + '#/entrar');
@@ -39,8 +39,14 @@ await page.emulateMedia({ colorScheme: 'light' });
 await page.getByRole('button', { name: /^Importar \d/ }).click();
 await page.getByRole('heading', { name: 'Mapa importado!' }).waitFor({ timeout: 120_000 });
 
-const id = await page.evaluate(() => null);
-const telas = [['painel', '#/'], ['esquecidos', '#/esquecidos'], ['pontos', '#/pontos'], ['mapa', '#/mapa'], ['ajustes', '#/ajustes'], ['design-system', '#/design-system']];
+// planilha: audita a tela de colunas depois de enviar um CSV
+await page.goto(BASE + '#/importar');
+await page.getByRole('button', { name: 'Planilha de clientes' }).click();
+await page.setInputFiles('input[type=file]', { name: 'c.csv', mimeType: 'text/csv', buffer: Buffer.from('Código;Nome;CNPJ;Cidade\n900001;Loja A;11.222.333/0001-81;Parnaíba\n') });
+await page.getByRole('heading', { name: 'Quais colunas são quais?' }).waitFor();
+for (const esquema of ['light', 'dark']) { await page.emulateMedia({ colorScheme: esquema }); await page.waitForTimeout(250); await auditar(`importar-planilha [${esquema}]`); }
+await page.emulateMedia({ colorScheme: 'light' });
+const telas = [['painel', '#/'], ['esquecidos', '#/esquecidos'], ['pontos', '#/pontos'], ['mapa', '#/mapa'], ['cadastrar', '#/cadastrar'], ['relatorio', '#/relatorio'], ['ajustes', '#/ajustes'], ['design-system', '#/design-system']];
 for (const esquema of ['light', 'dark']) {
   await page.emulateMedia({ colorScheme: esquema });
   for (const [nome, h] of telas) {
@@ -57,7 +63,12 @@ for (const esquema of ['light', 'dark']) {
   await page.emulateMedia({ colorScheme: esquema });
   await page.goto(BASE + '#/'); await page.waitForTimeout(900);
   await auditar(`hoje [${esquema}]`);
-  await page.locator('article.item a.titulo').first().click(); await page.getByRole('heading', { name: 'Histórico de visitas' }).waitFor();
+  await page.goto(BASE + '#/pontos'); await page.getByRole('button', { name: 'De outros vendedores' }).click().catch(() => {}); await page.waitForTimeout(500);
+  await auditar(`pontos-vendedor [${esquema}]`);
+  await page.goto(BASE + '#/cadastrar'); await page.waitForTimeout(400);
+  await auditar(`cadastrar-vendedor [${esquema}]`);
+  await page.goto(BASE + '#/');
+  await page.locator('article.item a.titulo').first().click(); await page.getByRole('heading', { name: 'Relatório de visitas' }).waitFor();
   await auditar(`ficha [${esquema}]`);
   await page.getByRole('button', { name: /Registrar visita/ }).first().click(); await page.getByRole('dialog').waitFor(); await page.waitForTimeout(400);
   await auditar(`gaveta-visita [${esquema}]`);

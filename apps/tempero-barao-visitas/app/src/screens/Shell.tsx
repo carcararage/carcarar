@@ -1,5 +1,5 @@
 import {
-  Ghost, House, LayoutDashboard, Map as MapaIcone, Moon, Settings, Store, Sun, Upload, type LucideIcon,
+  FileText, Ghost, House, LayoutDashboard, Map as MapaIcone, Moon, Settings, Store, Sun, Upload, type LucideIcon,
 } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useTema } from '../hooks/useTema';
@@ -12,6 +12,8 @@ interface Aba {
   rotulo: string;
   icone: LucideIcon;
   fim?: boolean;
+  /** só no menu lateral (desktop); na barra do celular não cabe */
+  lateral?: boolean;
 }
 
 export default function Shell() {
@@ -24,12 +26,14 @@ export default function Shell() {
         { para: '/esquecidos', rotulo: 'Esquecidos', icone: Ghost },
         { para: '/mapa', rotulo: 'Mapa', icone: MapaIcone },
         { para: '/pontos', rotulo: 'Pontos', icone: Store },
-        { para: '/importar', rotulo: 'Importar', icone: Upload },
+        { para: '/relatorio', rotulo: 'Relatório', icone: FileText },
+        { para: '/importar', rotulo: 'Importar', icone: Upload, lateral: true },
       ]
     : [
         { para: '/', rotulo: 'Hoje', icone: House, fim: true },
         { para: '/mapa', rotulo: 'Mapa', icone: MapaIcone },
         { para: '/pontos', rotulo: 'Pontos', icone: Store },
+        { para: '/relatorio', rotulo: 'Relatório', icone: FileText },
       ];
 
   const escuro = tema === 'escuro' || (tema === 'auto' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
@@ -81,7 +85,7 @@ export default function Shell() {
       </main>
 
       <nav className="tabbar" aria-label="Principal">
-        {abas.map((a) => (
+        {abas.filter((a) => !a.lateral).map((a) => (
           <NavLink key={a.para} to={a.para} end={a.fim}>
             <a.icone size={22} aria-hidden />
             {a.rotulo}

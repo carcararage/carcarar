@@ -1,4 +1,5 @@
-import { CalendarCheck, Ghost, Locate, TriangleAlert } from 'lucide-react';
+import { CalendarCheck, Ghost, Locate, Plus, TriangleAlert } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import mascote from '../brand/mascote.png';
 import { fila, painelCobertura, totais, type ItemFila } from '../db/api';
@@ -77,6 +78,7 @@ export default function Hoje() {
       <section className="stack" aria-labelledby="fila-titulo">
         <div className="row between">
           <h2 id="fila-titulo" className="h2">Fila de visitas</h2>
+          <Link to="/cadastrar" className="btn btn-soft btn-sm"><Plus size={16} aria-hidden /> Cliente</Link>
           <button
             className="chip"
             aria-pressed={perto}

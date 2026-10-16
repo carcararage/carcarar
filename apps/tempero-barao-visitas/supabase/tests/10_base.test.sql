@@ -602,4 +602,173 @@ begin
 end $$;
 rollback;
 
+-- ===========================================================================
+-- 10. Visibilidade entre vendedores, cadastro na plataforma, duplicados, localização (0004)
+-- ===========================================================================
+-- 10.1 vendedor vê TODOS os pontos, mas só os dele em detalhe
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'V1', true);
+do $$
+declare r record; n int;
+begin
+  select count(*) into n from v_pontos_mapa;
+  assert n = 5, 'V1 enxerga os 5 pontos no mapa (k1..k5). veio ' || n;
+  select count(*) into n from estabelecimentos;
+  assert n = 4, 'mas a tabela continua restrita (k1,k2,k4 + livre k5). veio ' || n;
+
+  select * into r from v_pontos_mapa where nome = 'Lanchonete Teste 3';        -- é do V2
+  assert r.vendedor_nome = 'vendedor2' and r.meu = false and r.livre = false, 'vinculado ao V2';
+  assert r.status is null and r.tier is null, 'status/classe de cliente alheio não aparece';
+  assert r.lat is not null, 'localização aparece (mapa)';
+
+  select * into r from v_pontos_mapa where nome = 'Bar Teste 5';                -- livre
+  assert r.livre and r.status is not null, 'ponto livre mostra status';
+  select * into r from v_pontos_mapa where nome like 'Restaurante Teste 1%';    -- meu
+  assert r.meu and r.tier = 'A', 'meu ponto mostra classe';
+
+  -- a view não vaza colunas de contato/cadastro
+  assert not exists (select 1 from information_schema.columns
+                      where table_name = 'v_pontos_mapa' and column_name in ('telefone','celular','cnpj','codigo_erp','observacoes')),
+         'view mínima';
+end $$;
+rollback;
+
+begin;
+set local role anon;
+do $$ begin
+  begin perform count(*) from v_pontos_mapa; raise exception 'ERRO: anon leu v_pontos_mapa';
+  exception when insufficient_privilege then null; end;
+end $$;
+rollback;
+
+-- 10.2 cadastro na plataforma
+begin;
+update estabelecimentos set cnpj = '11.222.333/0001-81', codigo_erp = '100777' where chave_externa = 'k3';  -- do V2
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'V1', true);
+do $$
+declare v_id uuid; e estabelecimentos; msg text;
+begin
+  v_id := cadastrar_estabelecimento('{"nome":"Mercadinho Novo","cnpj":"99.888.777/0001-66","telefone":"(86) 90000-1111",
+      "cidade":"Parnaíba","bairro":"Centro","segmento":"varejo","status":"inativo","vendedor_id":"00000000-0000-0000-0000-000000000002",
+      "lat":-2.91,"lng":-41.77}'::jsonb);
+  select * into e from estabelecimentos where id = v_id;
+  assert e.vendedor_id = '00000000-0000-0000-0000-000000000001', 'vendedor cadastra SEMPRE na própria carteira';
+  assert e.status = 'em_prospeccao', 'vendedor não escolhe status fora de ativo/em_prospeccao';
+  assert e.chave_externa like 'app:%' and e.segmento = 'varejo' and e.lat = -2.91 and e.carteira_desde is not null;
+  assert exists (select 1 from v_cadencia where estabelecimento_id = v_id), 'entra na cadência';
+
+  -- duplicado por CNPJ de cliente do V2 (formatação diferente) é barrado e diz de quem é
+  begin
+    perform cadastrar_estabelecimento('{"nome":"Outro Nome","cnpj":"11222333000181"}'::jsonb);
+    raise exception 'ERRO: aceitou CNPJ duplicado';
+  exception when unique_violation then
+    get stacked diagnostics msg = message_text;
+    assert msg like '%mesmo CNPJ%' and msg like '%vinculado a vendedor2%', msg;
+  end;
+  -- duplicado por código do ERP
+  begin
+    perform cadastrar_estabelecimento('{"nome":"Zzz","codigo_erp":"100777"}'::jsonb);
+    raise exception 'ERRO: aceitou código duplicado';
+  exception when unique_violation then null; end;
+  -- duplicado por nome+cidade, ignorando acento e caixa
+  begin
+    perform cadastrar_estabelecimento('{"nome":"MERCADINHO  NOVÓ","cidade":"PARNAIBA"}'::jsonb);
+    raise exception 'ERRO: aceitou nome duplicado';
+  exception when unique_violation then
+    get stacked diagnostics msg = message_text;
+    assert msg like '%na sua carteira%', msg;
+  end;
+  -- mesmo nome em outra cidade NÃO é duplicado
+  perform cadastrar_estabelecimento('{"nome":"Mercadinho Novo","cidade":"Luís Correia"}'::jsonb);
+  -- vendedor não consegue "forçar"
+  begin
+    perform cadastrar_estabelecimento('{"nome":"Zzz","codigo_erp":"100777","forcar":true}'::jsonb);
+    raise exception 'ERRO: vendedor forçou duplicado';
+  exception when unique_violation then null; end;
+  -- sem nome
+  begin perform cadastrar_estabelecimento('{"cnpj":"1"}'::jsonb); raise exception 'ERRO: sem nome';
+  exception when sqlstate '22023' then null; end;
+end $$;
+
+-- gestão escolhe vendedor/status e pode forçar
+select set_config('request.jwt.claim.sub', :'G', true);
+do $$
+declare v_id uuid; e estabelecimentos;
+begin
+  v_id := cadastrar_estabelecimento('{"nome":"Cliente da Gestão","status":"ativo","tier":"A",
+      "vendedor_id":"00000000-0000-0000-0000-000000000002"}'::jsonb);
+  select * into e from estabelecimentos where id = v_id;
+  assert e.vendedor_id = '00000000-0000-0000-0000-000000000002' and e.status = 'ativo' and e.tier = 'A';
+  perform cadastrar_estabelecimento('{"nome":"Zzz","codigo_erp":"100777","forcar":true}'::jsonb);  -- gestão força
+end $$;
+
+-- promotor não cadastra
+select set_config('request.jwt.claim.sub', :'P1', true);
+do $$ begin
+  begin perform cadastrar_estabelecimento('{"nome":"Promotor tenta"}'::jsonb); raise exception 'ERRO: promotor cadastrou';
+  exception when insufficient_privilege then null; end;
+end $$;
+rollback;
+
+-- 10.3 definir localização
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'V1', true);
+do $$
+declare n int;
+begin
+  -- k4 (do V1) não tem coordenada: o vendedor define pelo GPS
+  perform definir_localizacao(t_eid('k4'), -2.9, -41.77);
+  assert (select lat from estabelecimentos where chave_externa = 'k4') = -2.9;
+  assert (select atributos ? 'localizacao_definida_por' from estabelecimentos where chave_externa = 'k4');
+  -- agora que tem, vendedor não "move o pino"
+  begin perform definir_localizacao(t_eid('k4'), -3.0, -41.0); raise exception 'ERRO: moveu pino';
+  exception when insufficient_privilege then null; end;
+  -- nem o de outro vendedor
+  begin perform definir_localizacao(t_eid('k3'), 0, 0); raise exception 'ERRO: mexeu em ponto alheio';
+  exception when insufficient_privilege then null; end;
+  begin perform definir_localizacao(t_eid('k4'), 95, 0); raise exception 'ERRO: coordenada inválida';
+  exception when sqlstate '22023' then null; end;
+end $$;
+select set_config('request.jwt.claim.sub', :'G', true);
+do $$ begin
+  perform definir_localizacao(t_eid('k4'), -2.95, -41.75);   -- gestão corrige
+  assert (select lat from estabelecimentos where chave_externa = 'k4') = -2.95;
+end $$;
+rollback;
+
+-- 10.4 funções de texto
+do $$ begin
+  assert norm_texto('  MERCADINHO  São José – Nº 1 ') = 'mercadinho sao jose n 1', norm_texto('  MERCADINHO  São José – Nº 1 ');
+  assert so_digitos('11.222.333/0001-81') = '11222333000181';
+end $$;
+
+-- ===========================================================================
+-- 11. Planilha não apaga o que o mapa já sabe (0005)
+-- ===========================================================================
+begin;
+do $$
+declare e estabelecimentos;
+begin
+  perform importar_estabelecimentos('[{"chave_externa":"erp:200001","nome":"Nome Curado no Mapa","lat":-2.91,"lng":-41.77,
+     "celular":"(86) 90000-0001"}]'::jsonb);
+  -- planilha: sem coordenada, nome do ERP diferente, telefone novo
+  perform importar_estabelecimentos('[{"chave_externa":"erp:200001","nome":"RAZAO DO ERP LTDA","lat":null,"lng":null,
+     "celular":"(86) 98888-0002","endereco":"Rua Nova, 10","atributos":{"fonte_planilha":true}}]'::jsonb);
+  select * into e from estabelecimentos where chave_externa = 'erp:200001';
+  assert e.lat = -2.91 and e.lng = -41.77, 'planilha não apaga a localização';
+  assert e.nome = 'Nome Curado no Mapa', 'planilha não troca o nome curado';
+  assert e.celular = '(86) 98888-0002' and e.endereco = 'Rua Nova, 10', 'mas atualiza contato e endereço';
+  -- reimport do mapa (sem a marca da planilha) continua podendo corrigir nome e pino
+  perform importar_estabelecimentos('[{"chave_externa":"erp:200001","nome":"Nome Novo do Mapa","lat":-2.92,"lng":-41.78}]'::jsonb);
+  select * into e from estabelecimentos where chave_externa = 'erp:200001';
+  assert e.nome = 'Nome Novo do Mapa' and e.lat = -2.92, 'o mapa continua mandando em nome e pino';
+  -- cliente só de planilha entra sem localização
+  perform importar_estabelecimentos('[{"chave_externa":"cnpj:11222333000181","nome":"So Planilha","atributos":{"fonte_planilha":true}}]'::jsonb);
+  assert (select lat from estabelecimentos where chave_externa = 'cnpj:11222333000181') is null;
+end $$;
+rollback;
+
 \echo 'OK: todos os testes de banco passaram'

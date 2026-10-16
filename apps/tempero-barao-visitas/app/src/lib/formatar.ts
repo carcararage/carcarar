@@ -93,3 +93,12 @@ export const maisDias = (n: number) => {
   const p = (x: number) => String(x).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
+
+const FUSO = 'America/Fortaleza';
+/** "sex., 16 de out. de 2026, 14:35" no fuso de Parnaíba, independente do aparelho. */
+export const dataHoraCompleta = (d: Date) =>
+  d.toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: FUSO });
+export const soData = (d: Date) => d.toLocaleDateString('pt-BR', { timeZone: FUSO });
+export const soHora = (d: Date) => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: FUSO });
+export const hojeISO = () => new Date().toLocaleDateString('sv-SE', { timeZone: FUSO }); // AAAA-MM-DD
+export const diasAtrasISO = (n: number) => new Date(Date.now() - n * 86_400_000).toLocaleDateString('sv-SE', { timeZone: FUSO });

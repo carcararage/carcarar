@@ -1,5 +1,5 @@
 import L from 'leaflet';
-import { Crosshair, Locate, Navigation } from 'lucide-react';
+import { Crosshair, Locate, Lock, Navigation } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { pontosMapa, type PontoMapa, type Semaforo } from '../db/api';
@@ -10,19 +10,23 @@ import { linkRota } from '../lib/links';
 import { useSessao } from '../state/sessao';
 import { SemaforoBadge, Vazio } from '../ui/componentes';
 
-const COR: Record<Semaforo | 'livre', string> = {
-  verde: '#2f9e57', amarelo: '#e8b100', vermelho: '#d03020', preto: '#1d1410', livre: '#3b82c4',
+const COR: Record<Semaforo | 'livre' | 'outro', string> = {
+  verde: '#2f9e57', amarelo: '#e8b100', vermelho: '#d03020', preto: '#1d1410', livre: '#3b82c4', outro: '#9b8f86',
 };
-type Camada = Semaforo | 'livre';
-const CAMADAS: Camada[] = ['preto', 'vermelho', 'amarelo', 'verde', 'livre'];
-const ROTULO_CAMADA: Record<Camada, string> = { ...ROTULO_SEMAFORO, livre: 'Sem cadência' };
+type Camada = Semaforo | 'livre' | 'outro';
+const CAMADAS: Camada[] = ['preto', 'vermelho', 'amarelo', 'verde', 'livre', 'outro'];
+const ROTULO_CAMADA: Record<Camada, string> = { ...ROTULO_SEMAFORO, livre: 'Livres', outro: 'De outros vendedores' };
 
-const tiles = (escuro: boolean) =>
-  escuro
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+// Fundo do mapa. Padrão: OpenStreetMap (gratuito, sem chave, adequado a demonstração e uso leve:
+// https://operations.osmfoundation.org/policies/tiles/). Para produção use um provedor com chave
+// (MapTiler, Stadia, Mapbox...) definindo VITE_MAP_TILES, ex.: https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=SUACHAVE
+// O tema escuro é feito por filtro de CSS sobre os mesmos tiles (ver components.css).
+const TILES = (import.meta.env.VITE_MAP_TILES as string | undefined) || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const ATRIBUICAO = (import.meta.env.VITE_MAP_ATTRIBUTION as string | undefined) ||
+  '© <a href="https://www.openstreetmap.org/copyright">Colaboradores do OpenStreetMap</a>';
 
-const camadaDe = (p: PontoMapa): Camada => p.semaforo ?? 'livre';
+// sem semáforo: ponto livre (qualquer um pode assumir) ou de outro vendedor (só aparece, vinculado)
+const camadaDe = (p: PontoMapa): Camada => p.semaforo ?? (!p.meu && !p.livre ? 'outro' : 'livre');
 const mediana = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); return s[s.length >> 1]; };
 
 export default function Mapa() {
@@ -40,7 +44,7 @@ export default function Mapa() {
 
   const visiveis = useMemo(() => (dados.dados ?? []).filter((p) => ativas.has(camadaDe(p))), [dados.dados, ativas]);
   const contagem = useMemo(() => {
-    const c: Record<Camada, number> = { preto: 0, vermelho: 0, amarelo: 0, verde: 0, livre: 0 };
+    const c: Record<Camada, number> = { preto: 0, vermelho: 0, amarelo: 0, verde: 0, livre: 0, outro: 0 };
     for (const p of dados.dados ?? []) c[camadaDe(p)]++;
     return c;
   }, [dados.dados]);
@@ -50,12 +54,7 @@ export default function Mapa() {
     if (!el.current || mapa.current) return;
     const m = L.map(el.current, { zoomControl: false, preferCanvas: true, attributionControl: true }).setView([-2.91, -41.76], 11);
     L.control.zoom({ position: 'bottomright' }).addTo(m);
-    const escuro = document.documentElement.getAttribute('data-theme') === 'dark' ||
-      (!document.documentElement.getAttribute('data-theme') && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
-    tileRef.current = L.tileLayer(tiles(escuro), {
-      maxZoom: 19, subdomains: 'abcd',
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · © <a href="https://carto.com/attributions">CARTO</a>',
-    }).addTo(m);
+    tileRef.current = L.tileLayer(TILES, { maxZoom: 19, attribution: ATRIBUICAO }).addTo(m);
     grupo.current = L.layerGroup().addTo(m);
     mapa.current = m;
     return () => { m.remove(); mapa.current = null; };
@@ -70,8 +69,8 @@ export default function Mapa() {
     for (const p of visiveis) {
       const c = camadaDe(p);
       L.circleMarker([p.lat, p.lng], {
-        radius: c === 'preto' ? 8 : 7, weight: 2, color: c === 'preto' ? '#fcb400' : '#ffffff',
-        fillColor: COR[c], fillOpacity: c === 'livre' ? 0.55 : 0.95,
+        radius: c === 'preto' ? 8 : c === 'outro' ? 5 : 7, weight: 2, color: c === 'preto' ? '#fcb400' : '#ffffff',
+        fillColor: COR[c], fillOpacity: c === 'livre' ? 0.6 : c === 'outro' ? 0.5 : 0.95,
       }).on('click', () => setSel(p)).addTo(g);
     }
   }, [visiveis]);
@@ -128,14 +127,29 @@ export default function Mapa() {
               <strong>{sel.nome}</strong>
               <button className="btn btn-ghost btn-sm" onClick={() => setSel(null)} aria-label="Fechar">✕</button>
             </div>
-            <div className="row wrap" style={{ gap: 'var(--space-2)' }}>
-              <SemaforoBadge s={sel.semaforo} />
-              <span className="small muted">{sel.diasAtraso != null ? textoPrazo(sel.diasAtraso) : ROTULO_STATUS[sel.status]} · {ROTULO_SEGMENTO[sel.segmento]} · Classe {sel.tier}</span>
-            </div>
-            <div className="row" style={{ gap: 'var(--space-2)' }}>
-              <Link className="btn btn-primary btn-sm grow" to={`/ponto/${sel.id}`}>Abrir ficha</Link>
-              <a className="btn btn-ghost btn-sm" href={linkRota(sel.lat, sel.lng)} target="_blank" rel="noreferrer"><Navigation size={16} aria-hidden /> Rota</a>
-            </div>
+            {camadaDe(sel) === 'outro' ? (
+              <>
+                <div className="row wrap" style={{ gap: 'var(--space-2)' }}>
+                  <span className="chip"><Lock size={14} aria-hidden /> Vinculado a {sel.vendedorNome ?? 'outro vendedor'}</span>
+                  <span className="small muted">{ROTULO_SEGMENTO[sel.segmento]}</span>
+                </div>
+                <p className="hint">Este cliente já está na carteira de outro vendedor. Você vê só o local, para não cadastrar nem visitar em duplicidade.</p>
+              </>
+            ) : (
+              <>
+                <div className="row wrap" style={{ gap: 'var(--space-2)' }}>
+                  <SemaforoBadge s={sel.semaforo} />
+                  <span className="small muted">
+                    {sel.diasAtraso != null ? textoPrazo(sel.diasAtraso) : sel.status ? ROTULO_STATUS[sel.status] : ''} · {ROTULO_SEGMENTO[sel.segmento]}
+                    {sel.tier ? ` · Classe ${sel.tier}` : ''}{sel.vendedorNome && !sel.meu ? ` · ${sel.vendedorNome}` : ''}
+                  </span>
+                </div>
+                <div className="row" style={{ gap: 'var(--space-2)' }}>
+                  <Link className="btn btn-primary btn-sm grow" to={`/ponto/${sel.id}`}>Abrir ficha</Link>
+                  <a className="btn btn-ghost btn-sm" href={linkRota(sel.lat, sel.lng)} target="_blank" rel="noreferrer"><Navigation size={16} aria-hidden /> Rota</a>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

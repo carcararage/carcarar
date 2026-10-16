@@ -4,8 +4,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { aplicarRegras, detectarVendedores, sugerirRegras } from '../kml/mapeamento';
 import { parseKml } from '../kml/parseKml';
 import {
-  assumirPonto, atualizarPontos, criarUsuario, editarContato, esquecidos, ficha, fila, garantirVendedores,
-  importarKml, listarPontos, painelCobertura, pontosMapa, registrarVisita, totais, validarVisita,
+  assumirPonto, atualizarPontos, buscarDuplicados, cadastrarCliente, criarUsuario, definirLocalizacao, editarContato,
+  ErroDuplicado, esquecidos, ficha, fila, garantirVendedores, importarKml, listarPontos, listarPontosVisiveis,
+  painelCobertura, pontosMapa, registrarVisita, relatorioVisitas, resumoPonto, totais, validarVisita,
   visitasParaValidar, type Usuario,
 } from './api';
 import { abrirBanco, comoUsuario } from './banco';
@@ -63,7 +64,10 @@ describe('permissões (RLS) pelo app', () => {
     expect((await listarPontos(joao.id)).total).toBe(8);
     expect((await listarPontos(gislandio.id)).total).toBe(4);
     expect((await listarPontos(gestor.id)).total).toBe(12);
-    expect((await pontosMapa(gislandio.id)).every((p) => p.vendedorId === gislandio.id)).toBe(true);
+    // o mapa mostra todos, mas só os dele vêm com detalhe; os do colega vêm sem status/classe
+    const mapa = await pontosMapa(gislandio.id);
+    expect(mapa.filter((p) => p.meu).every((p) => p.vendedorId === gislandio.id && p.status !== null)).toBe(true);
+    expect(mapa.filter((p) => !p.meu && !p.livre).every((p) => p.status === null && p.tier === null)).toBe(true);
   });
 
   it('vendedor não registra visita em ponto alheio', async () => {
@@ -162,5 +166,131 @@ describe('início da cadência na importação (0003)', () => {
     const f = (await fila(joao.id, null, 0, 500)).filter((x) => x.nome.startsWith('HOJE '));
     expect(f).toHaveLength(5);
     expect(f.every((x) => x.diasAtraso === 0)).toBe(true);
+  });
+});
+
+describe('vendedor vê os clientes dos colegas só como "vinculado a" (0004)', () => {
+  it('lista e mapa mostram os pontos de outros, sem dados de cadastro', async () => {
+    const todos = await listarPontosVisiveis(joao.id, { limite: 1000 });
+    const dosColegas = todos.itens.filter((p) => !p.meu && !p.livre);
+    expect(dosColegas.length).toBeGreaterThan(0);
+    expect(dosColegas.every((p) => p.vendedorNome === 'Gislandio Silveira' && p.status === null && p.tier === null)).toBe(true);
+    expect((await listarPontosVisiveis(joao.id, { escopo: 'outros', limite: 1000 })).itens.every((p) => !p.meu && !p.livre)).toBe(true);
+    expect((await listarPontosVisiveis(joao.id, { escopo: 'meus', limite: 1000 })).itens.every((p) => p.meu)).toBe(true);
+    const mapa = await pontosMapa(joao.id);
+    const alheio = mapa.find((p) => p.vendedorNome === 'Gislandio Silveira')!;
+    expect(alheio).toMatchObject({ meu: false, livre: false, semaforo: null, status: null });
+  });
+
+  it('a ficha do cliente alheio é negada, mas o resumo diz de quem é', async () => {
+    const id = await idDe('PADARIA EXEMPLO'); // do Gislandio
+    expect(await ficha(joao.id, id)).toBeNull();
+    expect(await resumoPonto(joao.id, id)).toMatchObject({ nome: 'PADARIA EXEMPLO', vendedorNome: 'Gislandio Silveira', meu: false });
+    expect((await ficha(gestor.id, id))?.codigoErp).toBe('100020'); // gestão vê tudo
+  });
+
+  it('a busca ignora acento e caixa', async () => {
+    const r = await listarPontosVisiveis(gestor.id, { busca: 'padaria EXÉMPLO' });
+    expect(r.itens.map((p) => p.nome)).toContain('PADARIA EXEMPLO');
+  });
+});
+
+describe('cadastro de cliente na plataforma (0004)', () => {
+  it('vendedor cadastra na própria carteira, com localização, e já entra na cadência', async () => {
+    const id = await cadastrarCliente(joao.id, {
+      nome: 'Tempero & Cia Novo', cnpj: '12.345.678/0001-90', telefone: '(86) 91111-2222', cidade: 'Parnaíba',
+      bairro: 'Centro', segmento: 'varejo', status: 'ativo', lat: -2.905, lng: -41.776,
+    });
+    const f = await ficha(joao.id, id);
+    expect(f).toMatchObject({ vendedor: 'João Oliveira', status: 'ativo', lat: -2.905, segmento: 'varejo', cnpj: '12.345.678/0001-90' });
+    expect(f?.cadencia?.semaforo).toBe('verde');
+    // o colega já o enxerga, vinculado ao João
+    expect((await resumoPonto(gislandio.id, id))?.vendedorNome).toBe('João Oliveira');
+  });
+
+  it('barra duplicado por CNPJ (formatado diferente), código do ERP e nome+cidade, dizendo de quem é', async () => {
+    const porCnpj = cadastrarCliente(gislandio.id, { nome: 'Outro nome qualquer', cnpj: '12345678000190' });
+    await expect(porCnpj).rejects.toBeInstanceOf(ErroDuplicado);
+    await expect(porCnpj).rejects.toThrow(/mesmo CNPJ.*vinculado a João Oliveira/);
+    await expect(cadastrarCliente(gislandio.id, { nome: 'Zzz', codigoErp: '100001' })).rejects.toThrow(/código do ERP/);
+    await expect(cadastrarCliente(gislandio.id, { nome: 'TEMPERO & CIA  NOVO', cidade: 'PARNAIBA' })).rejects.toThrow(/nome e cidade/);
+    // mesmo nome em outra cidade é outro cliente
+    await expect(cadastrarCliente(gislandio.id, { nome: 'Tempero & Cia Novo', cidade: 'Luís Correia' })).resolves.toBeTruthy();
+    const d = await buscarDuplicados(gislandio.id, { cnpj: '12.345.678/0001-90' });
+    expect(d[0]).toMatchObject({ vendedorNome: 'João Oliveira', meu: false, motivo: 'mesmo CNPJ' });
+  });
+
+  it('vendedor não força nem escolhe vendedor; a gestão sim', async () => {
+    await expect(cadastrarCliente(joao.id, { nome: 'X', codigoErp: '100001', forcar: true })).rejects.toBeInstanceOf(ErroDuplicado);
+    const id = await cadastrarCliente(joao.id, { nome: 'Cliente do Gislandio?', vendedorId: gislandio.id, status: 'inativo' });
+    expect(await ficha(gislandio.id, id)).toBeNull(); // ficou com o João, não com o Gislandio
+    const g = await cadastrarCliente(gestor.id, { nome: 'Por conta da gestão', vendedorId: gislandio.id, status: 'ativo', tier: 'A' });
+    expect(await ficha(gislandio.id, g)).toMatchObject({ vendedor: 'Gislandio Silveira', status: 'ativo', tier: 'A' });
+    await expect(cadastrarCliente(gestor.id, { nome: 'Forçado', codigoErp: '100001', forcar: true })).resolves.toBeTruthy();
+  });
+});
+
+describe('localização definida pelo GPS (0004)', () => {
+  it('vendedor define o ponto de cliente sem localização uma única vez; a gestão corrige', async () => {
+    const id = await cadastrarCliente(joao.id, { nome: 'Sem pino ainda', cidade: 'Piracuruca' });
+    expect((await ficha(joao.id, id))?.lat).toBeNull();
+    await definirLocalizacao(joao.id, id, -3.9, -41.7);
+    expect((await ficha(joao.id, id))?.lat).toBe(-3.9);
+    await expect(definirLocalizacao(joao.id, id, -1, -1)).rejects.toThrow(/só a gestão/);
+    await definirLocalizacao(gestor.id, id, -3.95, -41.75);
+    expect((await ficha(gestor.id, id))?.lat).toBe(-3.95);
+    await expect(definirLocalizacao(gislandio.id, id, 0, 0)).rejects.toThrow();
+  });
+});
+
+describe('relatório de visitas', () => {
+  it('lista com data e hora, respeita permissões e filtros', async () => {
+    const id = await idDe('CHALANA TESTE');
+    await registrarVisita(joao.id, nova({ estabelecimentoId: id, gps: { lat: -2.905, lng: -41.776 }, valorPedido: 200, observacao: 'primeira' }));
+    const meu = await relatorioVisitas(joao.id);
+    expect(meu.length).toBeGreaterThan(0);
+    expect(meu.every((l) => l.vendedor === 'João Oliveira')).toBe(true);
+    expect(meu[0].checkinEm).toBeInstanceOf(Date);
+    expect(meu.some((l) => l.ponto === 'CHALANA TESTE' && l.valorPedido === 200)).toBe(true);
+    expect(await relatorioVisitas(gislandio.id)).toHaveLength(0); // não vê visitas do colega
+    const todas = await relatorioVisitas(gestor.id);
+    expect(todas.length).toBe(meu.length);
+    expect(await relatorioVisitas(gestor.id, { pontoId: id })).not.toHaveLength(0);
+    expect(await relatorioVisitas(gestor.id, { vendedorId: gislandio.id })).toHaveLength(0);
+    expect(await relatorioVisitas(gestor.id, { de: '2999-01-01' })).toHaveLength(0);
+  });
+});
+
+describe('planilha do ERP sobre pontos do mapa (0005)', () => {
+  it('atualiza cadastro mas preserva nome curado e localização; clientes novos entram sem local', async () => {
+    const { paraItens } = await import('../planilha/clientes');
+    const antes = await ficha(gestor.id, await idDe('CHALANA TESTE'));
+    expect(antes?.lat).toBe(-2.905);
+
+    const { itens: doErp } = paraItens(
+      [
+        { codigoErp: '100001', nome: 'JULIA TESTE DA SILVA', celular: '(86) 97777-1234', endereco: 'Av Nova, 99' }, // já está no mapa
+        { codigoErp: '555001', nome: 'CLIENTE SO NA PLANILHA', cnpj: '55.666.777/0001-88', bairro: 'Centro', cidade: 'Parnaíba' },
+      ],
+      { statusPadrao: 'prospecto', tierPadrao: 'C', vendedorPadrao: null },
+    );
+    const r = await importarKml(gestor.id, doErp, [], 'zero');
+    expect(r).toMatchObject({ inseridos: 1, atualizados: 1 });
+
+    const depois = await ficha(gestor.id, await idDe('CHALANA TESTE'));
+    expect(depois).toMatchObject({ nome: 'CHALANA TESTE', lat: -2.905, lng: -41.776, celular: '(86) 97777-1234', endereco: 'Av Nova, 99' });
+    const novo = await ficha(gestor.id, await idDe('CLIENTE SO NA PLANILHA'));
+    expect(novo).toMatchObject({ lat: null, status: 'prospecto', cnpj: '55.666.777/0001-88', codigoErp: '555001', vendedor: null });
+    // sem dono e sem localização: aparece para qualquer vendedor assumir e marcar o ponto
+    expect((await listarPontosVisiveis(gislandio.id, { escopo: 'livres', limite: 1000 })).itens.some((p) => p.nome === 'CLIENTE SO NA PLANILHA' && !p.temCoordenada)).toBe(true);
+  });
+});
+
+describe('migrações do app', () => {
+  it('o banco do navegador aplica TODAS as migrações da pasta supabase/migrations, na ordem', async () => {
+    const { readdirSync } = await import('node:fs');
+    const { MIGRACOES } = await import('./schema');
+    const arquivos = readdirSync(new URL('../../../supabase/migrations/', import.meta.url)).filter((f) => f.endsWith('.sql')).sort();
+    expect(MIGRACOES.map((m) => m.nome + '.sql')).toEqual(arquivos);
   });
 });

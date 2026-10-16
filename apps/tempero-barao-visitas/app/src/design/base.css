@@ -246,3 +246,32 @@ p {
     display: none !important;
   }
 }
+
+/* impressão (relatórios): só o conteúdo */
+@media print {
+  .sidebar,
+  .tabbar,
+  .page-head,
+  .actionbar,
+  .toasts,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000;
+  }
+  .shell {
+    display: block;
+  }
+  .page {
+    max-width: none;
+    padding: 0;
+  }
+  .card,
+  .item,
+  .table-wrap {
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+}
