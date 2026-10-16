@@ -198,14 +198,20 @@ export function paraItens(linhas: LinhaCliente[], o: OpcoesItens): ResultadoIten
     else if (digitos.length === 11) cpf++; // CPF de pessoa física: descartado
 
     let nome = l.nome ?? l.razaoSocial ?? '';
+    let provisorio = false;
     if (!nome) {
       if (!o.incluirSemNome) { semNome++; continue; }
       nome = `Sem nome · ${l.endereco ?? l.cidade ?? 'cliente'}`;
+      provisorio = true;
     }
     const codigo = (l.codigoErp ?? '').replace(/\D/g, '') || null;
     const ch = codigo ? `erp:${codigo}` : cnpj ? `cnpj:${digitos}` : `plan:${hash53(`${normaliza(nome)}|${normaliza(l.endereco ?? '')}`)}`;
-    if (vistos.has(ch)) { duplicados++; continue; }
-    vistos.add(ch);
+    // sem nome nem código, dois clientes no mesmo endereço (galeria, prédio) não dá para distinguir:
+    // mantém os dois (nº de ordem na chave) em vez de perder um
+    let chave = ch;
+    if (provisorio) for (let n = 2; vistos.has(chave); n++) chave = `${ch}#${n}`;
+    else if (vistos.has(ch)) { duplicados++; continue; }
+    vistos.add(chave);
 
     let vendedor = o.vendedorPadrao;
     if (l.vendedor) {
@@ -217,12 +223,12 @@ export function paraItens(linhas: LinhaCliente[], o: OpcoesItens): ResultadoIten
     const seg = SEG_TEXTO.find((s) => s === l.segmento?.trim().toLowerCase().replace(' ', '_')) ?? inferirSegmento(nome, null);
 
     itens.push({
-      chave_externa: ch, nome, lat: null, lng: null,
+      chave_externa: chave, nome, lat: null, lng: null,
       endereco: l.endereco ?? null, bairro: l.bairro ?? null, cidade: l.cidade ?? null, uf: l.uf ?? null, cep: l.cep ?? null,
       telefone: telefoneValido(l.telefone) ?? null, celular: telefoneValido(l.celular) ?? null, contato: l.contato ?? null,
       codigo_erp: codigo, razao_social: l.razaoSocial ?? null, cnpj, observacoes: l.observacoes ?? null,
       categoria: 'Planilha de clientes', grupo_origem: 'Planilha de clientes', regiao: null, segmento: seg,
-      atributos: { fonte_planilha: true },
+      atributos: provisorio ? { fonte_planilha: true, nome_provisorio: true } : { fonte_planilha: true },
       status: st ?? o.statusPadrao, tier, vendedor_chave: vendedor,
     });
   }

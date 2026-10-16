@@ -50,7 +50,7 @@ export default function ImportarPlanilha() {
       const l = detectarLayout(linhas);
       setArquivo(f.name);
       setLayout(l);
-      if (l === 'relatorio-erp') { setRel(lerRelatorioErp(linhas)); setTab(null); }
+      if (l === 'relatorio-erp') { const lr = lerRelatorioErp(linhas); setRel(lr); setTab(null); setIncluirSemNome(lr.blocos > 0 && lr.semNome / lr.blocos > 0.3); }
       else { const t = lerTabela(linhas); setTab(t); setMapa(t.mapa); setRel(null); }
     } catch (e) {
       setLayout(null);
@@ -92,7 +92,7 @@ export default function ImportarPlanilha() {
           <h1 className="hero-title">Planilha importada!</h1>
           <p className="small" style={{ opacity: 0.85, marginTop: 8 }}>{inteiro(feito.inseridos)} clientes novos · {inteiro(feito.atualizados)} atualizados</p>
         </div>
-        <div className="banner ok"><CircleCheck size={20} aria-hidden /> Clientes que já estavam no mapa (mesmo código do ERP) foram atualizados com cadastro, endereço e telefones; nome e localização do mapa foram preservados.</div>
+        <div className="banner ok"><CircleCheck size={20} aria-hidden /> Clientes que já estavam no mapa (mesmo código do ERP ou mesmo CNPJ) foram atualizados com cadastro, endereço e telefones; nome e localização do mapa foram preservados.</div>
         <div className="banner"><TriangleAlert size={20} aria-hidden /> Clientes novos entram <strong>sem localização</strong>: o vendedor marca o ponto pelo GPS na ficha, na primeira visita.</div>
         <div className="row wrap"><Link to="/pontos" className="btn btn-primary btn-lg">Ver pontos e atribuir vendedores</Link><Link to="/" className="btn btn-ghost btn-lg">Painel</Link><button className="btn btn-soft btn-lg" onClick={() => { setFeito(null); setLayout(null); setArquivo(''); }}>Importar outra planilha</button></div>
       </div>
@@ -136,6 +136,7 @@ export default function ImportarPlanilha() {
                 <span className="small">Essa exportação do ERP perdeu a linha “razão social / código / fantasia” (só a primeira de cada folha saiu). Sem o nome, o vendedor não consegue identificar o cliente.
                   {' '}<strong>Peça uma nova exportação com as colunas Código, Razão social e Fantasia</strong> (de preferência “planilha de dados”/CSV, uma linha por cliente) e envie de novo: o sistema atualiza sem duplicar.</span>
                 <label className="row small"><input type="checkbox" className="check" checked={incluirSemNome} onChange={(e) => setIncluirSemNome(e.target.checked)} /> Importar assim mesmo, usando o endereço como nome provisório</label>
+                <span className="small muted">Clientes com o mesmo CNPJ de um pino do mapa são ligados a ele (sem duplicar). Quando você reimportar a planilha com os nomes, o nome provisório é trocado pelo real.</span>
               </div>
             </div>
           )}

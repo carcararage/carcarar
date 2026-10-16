@@ -7,7 +7,7 @@ Sistema de cadência de visitas: nenhum ponto de venda fica esquecido. Especific
 
 | Parte | Estado |
 |---|---|
-| Banco (regras, permissões, cadência, cadastro, duplicados) | Pronto e testado em Postgres 16 (`supabase/migrations` 0001–0005) |
+| Banco (regras, permissões, cadência, cadastro, duplicados) | Pronto e testado em Postgres 16 (`supabase/migrations` 0001–0006) |
 | Importador do Google Earth (KML/KMZ) | Pronto, roda no navegador; testado com o mapa real da Barão |
 | Importador de planilha de clientes (XLSX/CSV) | Pronto: relatório impresso do ERP e tabela simples; testado com a listagem real (ver aviso abaixo) |
 | App (PWA) em **modo demonstração** | Pronto: Hoje, Mapa, Ficha, Registrar visita, Cadastrar cliente, Painel, Esquecidos, Pontos, Relatório de visitas (CSV/impressão), Importar, Ajustes, Design System |
@@ -34,6 +34,7 @@ Build estático (qualquer hospedagem, inclusive Netlify): `npm run build` → pa
 ```
 supabase/migrations/   0001 base · 0002 importação com ERP · 0003 início da cadência
                        0004 cadastro/duplicados/visibilidade · 0005 planilha sem apagar o mapa
+                       0006 planilha casa com o mapa por CNPJ; nome provisório vira nome real
 supabase/local/        stub do que o Supabase já entrega (usado em testes e no modo demo)
 supabase/tests/        suíte SQL + runner (Postgres real)
 app/src/kml/           leitor de KML/KMZ, texto do ERP, mapeamento pasta → status/vendedor
@@ -48,7 +49,7 @@ app/e2e/               fluxo no Chromium (smoke) e auditoria de acessibilidade (
 
 ```bash
 supabase/tests/run_tests.sh           # migrações + regras no Postgres real (precisa de psql/createdb)
-cd app && npx vitest run              # importadores + camada de dados em PGlite (55 testes)
+cd app && npx vitest run              # importadores + camada de dados em PGlite (56 testes)
 cd app && npm run build && npx vite preview --port 4173 &
 node e2e/smoke.mjs                    # fluxo completo no Chromium (KML=/caminho para usar o seu arquivo)
 node e2e/fluxos.mjs                   # planilha, cadastro, "vinculado a outro vendedor", mapa, relatório
@@ -64,7 +65,7 @@ node e2e/a11y.mjs                     # axe-core, telas × temas claro/escuro (0
 
 ## Planilha de clientes do ERP: atenção
 
-A "Listagem de Clientes – Detalhado" exportada em Excel perdeu o **nome e o código** de 2.165 dos 2.166 clientes (conferido dentro do arquivo: não estão escondidos). O app avisa isso e **não cria clientes sem nome** por padrão. Peça ao ERP uma exportação com as colunas **Código, Razão social e Fantasia** (de preferência "planilha de dados"/CSV, uma linha por cliente): o importador reconhece os cabeçalhos e atualiza sem duplicar.
+A "Listagem de Clientes – Detalhado" exportada em Excel perdeu o **nome e o código** de 2.165 dos 2.166 clientes (conferido dentro do arquivo: não estão escondidos). O app avisa isso. Para não travar o cadastro, o importador **já vem marcado** para criar esses clientes com o **endereço como nome provisório** ("Sem nome · Rua X, 10"), sem vendedor (livres, para o vendedor assumir) e sem localização. Os que têm o mesmo **CNPJ** de um pino do mapa são ligados a ele, sem duplicar (na planilha real: 325 de 2.166). Quando você reimportar a planilha com Código/Razão social/Fantasia, o nome provisório é trocado pelo real (casa por CNPJ, código ou endereço). Peça ao ERP uma exportação com as colunas **Código, Razão social e Fantasia** (de preferência "planilha de dados"/CSV, uma linha por cliente): o importador reconhece os cabeçalhos e atualiza sem duplicar.
 
 ## Mapa
 

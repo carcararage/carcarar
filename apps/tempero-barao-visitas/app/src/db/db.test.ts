@@ -286,6 +286,37 @@ describe('planilha do ERP sobre pontos do mapa (0005)', () => {
   });
 });
 
+describe('planilha casa com o mapa por CNPJ e nome provisório (0006)', () => {
+  it('não duplica por CNPJ nem por endereço provisório; nome real substitui o provisório', async () => {
+    const { paraItens } = await import('../planilha/clientes');
+    const base = { statusPadrao: 'prospecto', tierPadrao: 'C', vendedorPadrao: null } as const;
+    const sem = paraItens(
+      [{ endereco: 'Rua das Acácias, 77', cidade: 'Parnaíba', cnpj: '12.345.678/0001-95' }, { endereco: 'Rua dos Ipês, 3', cidade: 'Parnaíba' }],
+      { ...base, incluirSemNome: true },
+    );
+    expect(sem.itens.every((i) => i.atributos?.nome_provisorio)).toBe(true);
+    await importarKml(gestor.id, sem.itens, [], 'zero');
+    const total = (await listarPontosVisiveis(gestor.id, { escopo: 'todos', limite: 5000 })).total;
+
+    // mesma planilha de novo: idempotente
+    await importarKml(gestor.id, sem.itens, [], 'zero');
+    expect((await listarPontosVisiveis(gestor.id, { escopo: 'todos', limite: 5000 })).total).toBe(total);
+
+    // exportação nova, agora com nomes e códigos: atualiza os mesmos pontos
+    const com = paraItens(
+      [{ codigoErp: '700001', nome: 'PADARIA ACACIAS', endereco: 'RUA DAS ACACIAS, 77', cidade: 'Parnaiba', cnpj: '12.345.678/0001-95' },
+       { codigoErp: '700002', nome: 'BAR DOS IPES', endereco: 'Rua dos Ipês, 3', cidade: 'Parnaíba' }],
+      base,
+    );
+    const r = await importarKml(gestor.id, com.itens, [], 'zero');
+    expect(r).toMatchObject({ inseridos: 0, atualizados: 2 });
+    expect((await listarPontosVisiveis(gestor.id, { escopo: 'todos', limite: 5000 })).total).toBe(total);
+    const f = await ficha(gestor.id, await idDe('PADARIA ACACIAS'));
+    expect(f).toMatchObject({ codigoErp: '700001' });
+    expect(await idDe('BAR DOS IPES')).toBeTruthy();
+  });
+});
+
 describe('migrações do app', () => {
   it('o banco do navegador aplica TODAS as migrações da pasta supabase/migrations, na ordem', async () => {
     const { readdirSync } = await import('node:fs');

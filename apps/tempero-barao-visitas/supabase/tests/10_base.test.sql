@@ -771,4 +771,52 @@ begin
 end $$;
 rollback;
 
+-- ===========================================================================
+-- 12. Planilha casa com o mapa por CNPJ e nome provisório vira nome real (0006)
+-- ===========================================================================
+begin;
+do $$
+declare n int; e estabelecimentos;
+begin
+  -- pino do mapa com CNPJ (chave kml) e depois planilha só com CNPJ (sem código): atualiza, não duplica
+  perform importar_estabelecimentos('[{"chave_externa":"kml:aaa","nome":"Mercadinho do Mapa","lat":-2.9,"lng":-41.7,
+     "cnpj":"11.222.333/0001-81"}]'::jsonb);
+  perform importar_estabelecimentos('[{"chave_externa":"cnpj:11222333000181","nome":"RAZAO PLANILHA","cnpj":"11.222.333/0001-81",
+     "celular":"(86) 97777-0001","atributos":{"fonte_planilha":true}}]'::jsonb);
+  select count(*) into n from estabelecimentos where so_digitos(cnpj) = '11222333000181';
+  assert n = 1, 'CNPJ igual não duplica: ' || n;
+  select * into e from estabelecimentos where chave_externa = 'kml:aaa';
+  assert e.nome = 'Mercadinho do Mapa' and e.lat = -2.9 and e.celular = '(86) 97777-0001', 'mapa preservado + contato da planilha';
+  -- reimport da mesma planilha continua idempotente
+  perform importar_estabelecimentos('[{"chave_externa":"cnpj:11222333000181","nome":"RAZAO PLANILHA","cnpj":"11.222.333/0001-81",
+     "atributos":{"fonte_planilha":true}}]'::jsonb);
+  assert (select count(*) from estabelecimentos where so_digitos(cnpj) = '11222333000181') = 1;
+  -- mapa depois da planilha também casa (planilha primeiro)
+  perform importar_estabelecimentos('[{"chave_externa":"cnpj:99888777000166","nome":"So Planilha 2","cnpj":"99.888.777/0001-66",
+     "atributos":{"fonte_planilha":true}}]'::jsonb);
+  perform importar_estabelecimentos('[{"chave_externa":"kml:bbb","nome":"Nome do Mapa 2","lat":-2.8,"lng":-41.6,
+     "cnpj":"99.888.777/0001-66"}]'::jsonb);
+  assert (select count(*) from estabelecimentos where so_digitos(cnpj) = '99888777000166') = 1, 'mapa depois da planilha não duplica';
+  assert (select nome from estabelecimentos where so_digitos(cnpj) = '99888777000166') = 'Nome do Mapa 2';
+  assert (select lat from estabelecimentos where so_digitos(cnpj) = '99888777000166') = -2.8;
+  -- dois CNPJs diferentes continuam separados
+  perform importar_estabelecimentos('[{"chave_externa":"kml:ccc","nome":"Outro","cnpj":"55.444.333/0001-22"}]'::jsonb);
+  assert (select count(*) from estabelecimentos where so_digitos(cnpj) in ('11222333000181','99888777000166','55444333000122')) = 3;
+
+  -- nome provisório (endereço) vira nome real quando a planilha traz o nome
+  perform importar_estabelecimentos('[{"chave_externa":"plan:p1","nome":"Sem nome · Rua das Flores, 5","endereco":"Rua das Flores, 5",
+     "cidade":"Parnaíba","atributos":{"fonte_planilha":true,"nome_provisorio":true}}]'::jsonb);
+  perform importar_estabelecimentos('[{"chave_externa":"erp:300777","nome":"PADARIA FLORES LTDA","codigo_erp":"300777",
+     "endereco":"RUA DAS FLORES, 5","cidade":"Parnaiba","atributos":{"fonte_planilha":true}}]'::jsonb);
+  assert (select count(*) from estabelecimentos where norm_texto(endereco) = 'rua das flores 5') = 1, 'provisório não duplica';
+  select * into e from estabelecimentos where chave_externa = 'plan:p1';
+  assert e.nome = 'PADARIA FLORES LTDA' and e.codigo_erp = '300777', 'nome real substitui o provisório';
+  assert not (e.atributos ? 'nome_provisorio'), 'marca de provisório some';
+  -- mesmo endereço em cliente com nome real NÃO é fundido (lojas vizinhas no mesmo prédio)
+  perform importar_estabelecimentos('[{"chave_externa":"erp:300888","nome":"LOJA DO LADO","codigo_erp":"300888",
+     "endereco":"Rua das Flores, 5","cidade":"Parnaíba","atributos":{"fonte_planilha":true}}]'::jsonb);
+  assert (select count(*) from estabelecimentos where norm_texto(endereco) = 'rua das flores 5') = 2;
+end $$;
+rollback;
+
 \echo 'OK: todos os testes de banco passaram'
