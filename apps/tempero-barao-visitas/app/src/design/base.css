@@ -1,0 +1,248 @@
+/* Base: reset, tipografia, layout utilitário */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  line-height: var(--lh-normal);
+  color: var(--text);
+  background: var(--bg);
+  background-image: radial-gradient(900px 420px at 8% -8%, var(--bg-glow), transparent 70%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'cv11', 'ss01';
+  overscroll-behavior-y: none;
+}
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+img.logo {
+  height: auto;
+  width: auto;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+a {
+  color: var(--link);
+  text-underline-offset: 3px;
+}
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+::selection {
+  background: var(--amber-300);
+  color: var(--choc-900);
+}
+
+/* tipografia */
+.display,
+.h1,
+.h2,
+.h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: var(--lh-tight);
+}
+.h1 {
+  font-size: var(--text-2xl);
+}
+.h2 {
+  font-size: var(--text-xl);
+}
+.h3 {
+  font-size: var(--text-lg);
+}
+.eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.num {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.small {
+  font-size: var(--text-sm);
+}
+.xs {
+  font-size: var(--text-xs);
+}
+.muted {
+  color: var(--text-muted);
+}
+.subtle {
+  color: var(--text-subtle);
+}
+.strong {
+  font-weight: 650;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* layout utilitário */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.row.wrap {
+  flex-wrap: wrap;
+}
+.row.between {
+  justify-content: space-between;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.stack-lg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+/* ---------- casca do app ---------- */
+.shell {
+  min-height: 100dvh;
+}
+.page {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-4) calc(104px + env(safe-area-inset-bottom));
+}
+.page-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0 var(--space-4);
+}
+.page-head .logo {
+  height: 34px;
+  width: auto;
+}
+.topbar-actions {
+  margin-left: auto;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.sidebar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .shell {
+    display: grid;
+    grid-template-columns: 264px minmax(0, 1fr);
+  }
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    padding: var(--space-6) var(--space-4);
+    border-right: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    backdrop-filter: blur(14px);
+  }
+  .page {
+    padding: var(--space-8) var(--space-8) var(--space-12);
+  }
+  .tabbar {
+    display: none !important;
+  }
+}
+
+/* troca de logo conforme o tema */
+.logo-escuro {
+  display: none !important;
+}
+:root[data-theme='dark'] .logo-claro {
+  display: none !important;
+}
+:root[data-theme='dark'] .logo-escuro {
+  display: block !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .logo-claro {
+    display: none !important;
+  }
+  :root:not([data-theme='light']) .logo-escuro {
+    display: block !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lg-hide {
+    display: none !important;
+  }
+  .page-head {
+    display: none !important;
+  }
+}

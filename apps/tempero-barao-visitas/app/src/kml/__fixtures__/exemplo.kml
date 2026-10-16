@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Arquivo FICTÍCIO de teste: nomes, telefones, CNPJ/CPF e endereços inventados.
+     Reproduz a ESTRUTURA do mapa real (pastas por vendedor, texto do ERP, bairros com polígono). -->
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+  <name>rota de teste</name>
+  <Folder>
+    <name>Lugares temporários.kml</name>
+    <Folder>
+      <name>Lugares temporários</name>
+
+      <Folder>
+        <name>JOÃO OLIVEIRA.kml</name>
+        <Folder>
+          <name>JOÃO OLIVEIRA</name>
+          <!-- layout A: tudo em linhas "rótulo: valor" -->
+          <Placemark>
+            <name>CHALANA TESTE</name>
+            <description>JULIA TESTE DA SILVA 100001 Fantasia: CHALANA TESTE
+Endereço: AV EXEMPLO, Nº 188 ANEXO A Bairro: CARMO
+Cidade: Parnaíba UF: PI CEP: 64.200-040 Telefone: (86) 3322-0001
+Região: Contato: Celular: (86) 99999-0001
+Classe: Pessoa Jurídica Email: teste@example.com
+CPF/CNPJ: 11.222.333/0001-81 RG/IE: 196097401
+Responsável: Limite: 0,00
+Observações:</description>
+            <Point><coordinates>-41.7760,-2.9050,0</coordinates></Point>
+          </Placemark>
+          <!-- layout B: CNPJ solto no endereço, cidade cai depois do bairro -->
+          <Placemark>
+            <name>MERCANTIL TESTE B</name>
+            <description>J R TESTE COMERCIAL 100002
+Endereço: AVENIDA FICTICIA, Nº 1400
+07.965.850/0001-73
+Cidade:
+CPF/CNPJ:
+Fantasia: MERCANTIL TESTE B
+Região:
+Bairro: CENTRO
+Luís Correia UF: PI CEP: 64.220-000 Telefone: (86) 9478-0002
+Contato: Celular:
+RG/IE: 194602290
+Responsável: Limite: 0,00
+Observações:</description>
+            <Point><coordinates>-41.6700,-2.8800,0</coordinates></Point>
+          </Placemark>
+          <!-- layout C: nota antes da razão social, CPF colado, observação preenchida -->
+          <Placemark>
+            <name>CANTINHO TESTE</name>
+            <description>MUDOU DE ENDEREÇO
+Maria Fulana da Silva 12345678909 100003 Apelido: CANTINHO TESTE
+Endereço: QUADRA 41, Nº Q41C07 Bairro: JOÃO XXIII
+Cidade: Parnaíba UF: PI CEP: 64.205-536 Telefone:
+Região: Contato: Celular: (86) 94222-0003
+Classe: Pessoa Jurídica Email:
+CPF/CNPJ: 123.456.789-09 RG/IE:
+Responsável: Limite: 0,00
+Observações: Cliente com histórico de atrasos. CPF 123.456.789-09 informado.</description>
+            <Point><coordinates>-41.7800,-2.9100,0</coordinates></Point>
+          </Placemark>
+          <!-- sem cadastro no ERP: só pino -->
+          <Placemark>
+            <name>BAR DO ZÉ</name>
+            <Point><coordinates>-41.7750,-2.9150,0</coordinates></Point>
+          </Placemark>
+          <!-- mesmo cliente (mesmo código ERP) marcado duas vezes -->
+          <Placemark>
+            <name>CHALANA TESTE (2)</name>
+            <description>JULIA TESTE DA SILVA 100001 Fantasia: CHALANA TESTE
+Endereço: AV EXEMPLO, Nº 188 Bairro: CARMO
+Cidade: Parnaíba UF: PI CEP: 64.200-040 Telefone:
+Região: Contato: Celular:
+Classe: Pessoa Jurídica Email:
+CPF/CNPJ: RG/IE:
+Responsável: Limite: 0,00
+Observações:</description>
+            <Point><coordinates>-41.7761,-2.9051,0</coordinates></Point>
+          </Placemark>
+        </Folder>
+      </Folder>
+
+      <Folder>
+        <name>VENDAS ATIVAS JOÃO OLIVEIRA.kml</name>
+        <Folder>
+          <name>VENDAS ATIVAS JOÃO OLIVEIRA</name>
+          <Placemark>
+            <name>SUPERMERCADO ATIVO 1</name>
+            <description>EMPRESA ATIVA LTDA 100010
+Endereço: RUA A, Nº 10
+Cidade: Parnaíba UF: PI Telefone: (86) 3322-0010
+Observações:</description>
+            <Point><coordinates>-41.7720,-2.9090,0</coordinates></Point>
+          </Placemark>
+          <Placemark>
+            <name>LANCHONETE ATIVA 2</name>
+            <Point><coordinates>-41.7690,-2.9120,0</coordinates></Point>
+          </Placemark>
+          <!-- latitude e longitude iguais: digitação -->
+          <Placemark>
+            <name>COMERCIAL COORDENADA ERRADA</name>
+            <Point><coordinates>-2.94,-2.94,0</coordinates></Point>
+          </Placemark>
+          <!-- muito longe do restante -->
+          <Placemark>
+            <name>MERCADINHO LONGE</name>
+            <Point><coordinates>-56.56,-29.12,0</coordinates></Point>
+          </Placemark>
+        </Folder>
+      </Folder>
+
+      <Folder>
+        <name>GISLANDIO SILVEIRA.kml</name>
+        <Folder>
+          <name>GISLANDIO SILVEIRA</name>
+          <Placemark>
+            <name>PADARIA EXEMPLO</name>
+            <description>PADARIA EXEMPLO LTDA 100020 Fantasia: PADARIA EXEMPLO
+Endereço: RUA B, Nº 20 Bairro: PINDORAMA
+Cidade: Parnaíba UF: PI CEP: 64.215-000 Telefone: (86) 3322-0020
+Região: Contato: Celular:
+Classe: Pessoa Jurídica Email:
+CPF/CNPJ: 22.333.444/0001-55 RG/IE:
+Responsável: Limite: 0,00
+Observações:</description>
+            <Point><coordinates>-41.7540,-2.9120,0</coordinates></Point>
+          </Placemark>
+          <Placemark>
+            <name>CASA DE CARNES TESTE</name>
+            <Point><coordinates>-41.7500,-2.9000,0</coordinates></Point>
+          </Placemark>
+        </Folder>
+      </Folder>
+
+      <Folder>
+        <name>VENDAS ATIVAS GISLANDIO.kml</name>
+        <Folder>
+          <name>Restaurante</name>
+          <Placemark>
+            <name>RESTAURANTE BOI TESTE</name>
+            <description>RESTAURANTE BOI TESTE LTDA 100030 Fantasia: RESTAURANTE BOI TESTE
+Endereço: AV C, Nº 30 Bairro: PINDORAMA
+Cidade: Parnaíba UF: PI CEP: 64.215-293 Telefone: (85) 3322-0030
+Região: Contato: Celular: (86) 99863-0030
+Classe: Pessoa Jurídica Email:
+CPF/CNPJ: 33.444.555/0001-66 RG/IE:
+Responsável: Limite: 0,00
+Observações:</description>
+            <Point><coordinates>-41.7545,-2.9118,0</coordinates></Point>
+          </Placemark>
+          <Placemark>
+            <name>VANGUARDA SUPERMERCADOS - LOJA TESTE</name>
+            <Point><coordinates>-41.7600,-2.9300,0</coordinates></Point>
+          </Placemark>
+        </Folder>
+      </Folder>
+    </Folder>
+
+    <Folder>
+      <name>VENDAS</name>
+      <Folder>
+        <name>BAIRRO</name>
+        <Folder>
+          <name>CARMO</name>
+          <!-- polígono SEM nome: o nome da região vem da pasta -->
+          <Placemark>
+            <Polygon><outerBoundaryIs><LinearRing><coordinates>
+              -41.790,-2.900,0 -41.770,-2.900,0 -41.770,-2.920,0 -41.790,-2.920,0 -41.790,-2.900,0
+            </coordinates></LinearRing></outerBoundaryIs></Polygon>
+          </Placemark>
+          <!-- rótulos de valores por bairro: NÃO são estabelecimentos -->
+          <Placemark><name>DO CARMO - RESTAURANTE: 301,98</name><Point><coordinates>-41.7800,-2.9100,0</coordinates></Point></Placemark>
+          <Placemark><name>COMERCIO R$ 931,30</name><Point><coordinates>-41.7790,-2.9110,0</coordinates></Point></Placemark>
+        </Folder>
+      </Folder>
+    </Folder>
+
+    <!-- rota desenhada e anotação sem geometria -->
+    <Placemark><name>Rota Centro</name><LineString><coordinates>-41.78,-2.91,0 -41.77,-2.91,0</coordinates></LineString></Placemark>
+    <Placemark><name>Anotação solta</name></Placemark>
+  </Folder>
+</Document>
+</kml>

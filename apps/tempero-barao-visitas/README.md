@@ -3,49 +3,69 @@
 Sistema de cadência de visitas: nenhum ponto de venda fica esquecido. Especificação em
 [`docs/tempero-barao-spec-funcional.md`](../../docs/tempero-barao-spec-funcional.md).
 
-## O que existe hoje (Marco 1: base)
+## Estado atual
 
-```
-supabase/migrations/0001_base.sql   modelo, cadência, regras, RLS, funções
-supabase/tests/                     mini-Supabase de teste + suíte SQL + runner
-tools/kml_import.py                 KML/KMZ (Google Earth) -> importar_estabelecimentos()
-tools/tests/                        testes do importador + KML fictício de exemplo
-```
+| Parte | Estado |
+|---|---|
+| Banco (regras, permissões, cadência) | Pronto e testado em Postgres 16 (`supabase/migrations` 0001–0003) |
+| Importador do Google Earth (KML/KMZ) | Pronto, roda no navegador; testado com o mapa real da Barão |
+| App (PWA) em **modo demonstração** | Pronto: Hoje, Mapa, Ficha, Registrar visita, Painel, Esquecidos, Pontos, Importar, Ajustes, Design System |
+| App ligado ao **Supabase** (multiusuário de verdade) | **Falta**: ver "Próximos passos" |
 
-Ainda **não há app** (front-end). Também **não foi aplicado num projeto Supabase real**: a migração foi
-testada em Postgres 16 local com um stub do que o Supabase fornece (`auth.uid()`, papéis `anon`/`authenticated`).
+No modo demonstração o banco (Postgres em WebAssembly, [PGlite](https://pglite.dev)) vive **dentro do navegador**, roda exatamente as mesmas migrações do Supabase e guarda tudo em IndexedDB. Serve para validar o processo com os vendedores e funciona offline, mas os dados ficam num só aparelho.
 
-## Rodar os testes
-
-Precisa de Postgres 16 (com `createdb`/`psql` no PATH e permissão para criar banco) e Python 3.
+## Rodar o app
 
 ```bash
-supabase/tests/run_tests.sh                 # migração + suíte SQL + importação ponta a ponta
-python3 -I tools/tests/test_kml_import.py   # só o importador
+cd app
+npm ci
+npm run dev        # http://localhost:5173
 ```
 
-## Importar o mapa do Google Earth
+1. Entre como **Gestão Barão** → *Importar* → envie o `.kml` exportado do Google Earth.
+2. Confira o que cada pasta significa (status, classe, vendedor) e escolha **como a cadência começa**.
+3. Troque de usuário em *Ajustes* para ver o app do **João Oliveira** ou do **Gislandio Silveira**.
+
+Build estático (qualquer hospedagem, inclusive Netlify): `npm run build` → pasta `app/dist`.
+
+## Estrutura
+
+```
+supabase/migrations/   0001 base · 0002 importação com ERP · 0003 início da cadência
+supabase/local/        stub do que o Supabase já entrega (usado em testes e no modo demo)
+supabase/tests/        suíte SQL + runner (Postgres real)
+app/src/kml/           leitor de KML/KMZ, texto do ERP, mapeamento pasta → status/vendedor
+app/src/db/            banco local (PGlite) e camada de dados (api.ts)
+app/src/design/        tokens e CSS do design system
+app/src/ui, screens/   componentes e telas
+app/e2e/               fluxo no Chromium (smoke) e auditoria de acessibilidade (axe)
+```
+
+## Testes
 
 ```bash
-python3 -I tools/kml_import.py mapa.kmz --formato sql --saida importar.sql
-# resumo (pontos, duplicados, ignorados, regiões) sai no terminal
+supabase/tests/run_tests.sh           # migrações + regras no Postgres real (precisa de psql/createdb)
+cd app && npx vitest run              # importador KML + camada de dados em PGlite (34 testes)
+cd app && npm run build && npx vite preview --port 4173 &
+node e2e/smoke.mjs                    # fluxo completo no Chromium (KML=/caminho para usar o seu arquivo)
+node e2e/a11y.mjs                     # axe-core, telas × temas claro/escuro
 ```
 
-Cole o conteúdo de `importar.sql` no SQL Editor do Supabase e execute (como gestor/admin ou service role).
-Pode reimportar à vontade: atualiza nome/endereço/localização e preserva status, tier, carteira e segmento.
+## Privacidade
 
-## Subir num Supabase (passos previstos, ainda não executados)
+- O cadastro do ERP que vem no mapa traz CPF, RG, e-mail e limite de crédito. **Nada disso é importado** (testado: nenhum desses dados chega ao banco).
+- Localização só é lida **uma vez**, no check-in. Não há rastreamento.
+- Dados reais de cliente **não entram no repositório** (o KML de teste é fictício).
+- Este repositório publica um site: hospede o app num **repositório privado** próprio antes de usar dados ou chaves reais.
 
-1. Criar projeto no Supabase.
-2. Aplicar `supabase/migrations/0001_base.sql` (SQL Editor ou `supabase db push`).
-3. Criar os usuários em Authentication; cada um ganha perfil de vendedor. Promover gestor/admin:
-   `update perfis set papel = 'admin' where id = '<uuid>';`
-4. Importar o KML (acima).
+## Próximos passos
+
+1. **Supabase real**: trocar `app/src/db/api.ts` por chamadas ao Supabase (as regras já estão no SQL), login por e-mail/senha, fila offline com reenvio (a chave de idempotência já existe).
+2. Aviso diário por WhatsApp e reconciliação de pins movidos no Google Earth.
+3. Promotoria com checklist de PDV.
 
 ## Convenções
 
 - **Toda regra de negócio fica no banco** (cadência, validação de check-in, permissões), para qualquer front obedecer.
-- **Cada nova migração que criar função** deve revogar `EXECUTE` de `public/anon/authenticated` e liberar só o necessário
-  (no Supabase, funções novas nascem executáveis por `anon`/`authenticated`).
-- **Dados reais de cliente não entram no repositório** (só o KML fictício de teste).
-- Hospedar este app num **repositório privado** próprio antes de colocar dados ou chaves reais; este repositório publica um site.
+- **Cada nova migração que criar função** deve revogar `EXECUTE` de `public/anon/authenticated` e liberar só o necessário.
+- O provedor de mapa (CARTO/OpenStreetMap) é para demonstração: confirme os termos de uso antes de produção e considere uma chave própria.

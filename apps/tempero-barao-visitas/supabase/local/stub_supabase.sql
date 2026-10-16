@@ -1,4 +1,4 @@
--- SOMENTE PARA TESTE LOCAL: imita o que o Supabase já entrega pronto
+-- SOMENTE PARA TESTE LOCAL E MODO DEMO (PGlite): imita o que o Supabase já entrega pronto
 -- (papéis, schema auth, auth.uid() e privilégios padrão). Nunca aplicar no Supabase real.
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'anon')         then create role anon nologin; end if;

@@ -483,4 +483,123 @@ do $$ begin
 end $$;
 rollback;
 
+-- ===========================================================================
+-- 8. Importação v2 (ERP, mapeamento de pastas -> status/tier/vendedor)
+-- ===========================================================================
+begin;
+update perfis set chave_import = 'joao-oliveira' where id = :'V1';
+do $$
+declare r jsonb; e estabelecimentos;
+begin
+  r := importar_estabelecimentos('[
+    {"chave_externa":"erp:100001","nome":"Mercado ERP","lat":-2.9,"lng":-41.7,"codigo_erp":"100001",
+     "razao_social":"ERP COMERCIO LTDA","cnpj":"11.222.333/0001-81","cep":"64.200-040",
+     "celular":"(86) 99999-0000","observacoes":"Vendas apenas à vista",
+     "status":"ativo","tier":"B","segmento":"varejo","vendedor_chave":"joao-oliveira"},
+    {"chave_externa":"erp:100002","nome":"Ponto sem coordenada","lat":null,"lng":null,
+     "status":"inativo","vendedor_chave":"inexistente"}
+  ]'::jsonb,
+  '[{"nome":"Bairro X","poligono":[[0,0],[1,0],[1,1]],"atributos":{"rotulos":["R$ 10,00"]}}]'::jsonb);
+
+  assert (r ->> 'inseridos')::int = 2 and (r ->> 'regioes')::int = 1, 'contagens: ' || r::text;
+  assert (r ->> 'vendedor_nao_encontrado')::int = 1, 'chave sem perfil é contada: ' || r::text;
+
+  select * into e from estabelecimentos where chave_externa = 'erp:100001';
+  assert e.status = 'ativo' and e.tier = 'B' and e.segmento = 'varejo', 'mapeamento aplicado na criação';
+  assert e.vendedor_id = '00000000-0000-0000-0000-000000000001' and e.carteira_desde is not null,
+         'vendedor resolvido pela chave_import e carteira iniciada';
+  assert e.codigo_erp = '100001' and e.cnpj = '11.222.333/0001-81' and e.celular = '(86) 99999-0000';
+  assert (select atributos -> 'rotulos' ->> 0 from regioes where nome = 'Bairro X') = 'R$ 10,00';
+
+  -- ponto sem coordenada é aceito e fica fora do mapa, mas dentro da cadência (ninguém o visita!)
+  assert (select lat from estabelecimentos where chave_externa = 'erp:100002') is null;
+  assert exists (select 1 from v_cadencia where nome = 'Ponto sem coordenada' and vendedor_id is null);
+
+  -- reimport: preserva decisões comerciais e observações; atualiza cadastro
+  r := importar_estabelecimentos('[
+    {"chave_externa":"erp:100001","nome":"Mercado ERP Novo Nome","lat":-2.9,"lng":-41.7,
+     "celular":"(86) 98888-1111","observacoes":"outra nota","status":"perdido","tier":"A","segmento":"rede"}
+  ]'::jsonb);
+  select * into e from estabelecimentos where chave_externa = 'erp:100001';
+  assert e.nome = 'Mercado ERP Novo Nome' and e.celular = '(86) 98888-1111', 'cadastro atualiza';
+  assert e.status = 'ativo' and e.tier = 'B' and e.segmento = 'varejo', 'decisões comerciais preservadas';
+  assert e.observacoes = 'Vendas apenas à vista', 'observação já existente é preservada';
+
+  -- ponto sem vendedor recebe o do arquivo no reimport
+  update estabelecimentos set vendedor_id = null where chave_externa = 'erp:100001';
+  perform importar_estabelecimentos('[{"chave_externa":"erp:100001","nome":"X","vendedor_chave":"joao-oliveira"}]'::jsonb);
+  assert (select vendedor_id from estabelecimentos where chave_externa = 'erp:100001')
+         = '00000000-0000-0000-0000-000000000001', 'vendedor aplicado quando ponto estava sem dono';
+end $$;
+
+-- vendedor não altera dados do ERP do próprio ponto, mas edita contato
+update estabelecimentos set vendedor_id = :'V1' where chave_externa = 'erp:100001';
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'V1', true);
+do $$
+declare n int;
+begin
+  update estabelecimentos set celular = '(86) 97777-2222', contato = 'Dona Maria' where chave_externa = 'erp:100001';
+  get diagnostics n = row_count;
+  assert n = 1, 'vendedor atualiza celular/contato do próprio ponto';
+  begin
+    update estabelecimentos set codigo_erp = '999999' where chave_externa = 'erp:100001';
+    raise exception 'ERRO: vendedor alterou código do ERP';
+  exception when insufficient_privilege then null; end;
+  begin
+    update estabelecimentos set cnpj = '00.000.000/0000-00' where chave_externa = 'erp:100001';
+    raise exception 'ERRO: vendedor alterou CNPJ';
+  exception when insufficient_privilege then null; end;
+end $$;
+rollback;
+
+-- ===========================================================================
+-- 9. Início da cadência na importação (zero | escalonado | vencidos)
+-- ===========================================================================
+begin;
+update perfis set chave_import = 'joao-oliveira' where id = :'V1';
+do $$
+declare
+  itens jsonb;
+  v_min int; v_max int; v_dist int;
+begin
+  -- 60 clientes ativos classe B (intervalo 30) do mesmo vendedor
+  select jsonb_agg(jsonb_build_object('chave_externa', 'ini:' || g, 'nome', 'Cliente ' || g,
+           'status', 'ativo', 'tier', 'B', 'vendedor_chave', 'joao-oliveira', 'lat', -2.9, 'lng', -41.7))
+    into itens from generate_series(1, 60) g;
+
+  -- zero: todos em dia, vencem só daqui a um intervalo inteiro
+  perform importar_estabelecimentos(itens, '[]', 'zero');
+  select min(dias_atraso), max(dias_atraso) into v_min, v_max from v_cadencia where nome like 'Cliente %';
+  assert v_min = -30 and v_max = -30, format('zero: esperado -30, veio %s..%s', v_min, v_max);
+  delete from estabelecimentos where chave_externa like 'ini:%';
+
+  -- vencidos: todos vencem hoje
+  perform importar_estabelecimentos(itens, '[]', 'vencidos');
+  select min(dias_atraso), max(dias_atraso) into v_min, v_max from v_cadencia where nome like 'Cliente %';
+  assert v_min = 0 and v_max = 0, format('vencidos: esperado 0, veio %s..%s', v_min, v_max);
+  delete from estabelecimentos where chave_externa like 'ini:%';
+
+  -- escalonado: vencimentos espalhados dentro do ciclo, nenhum já atrasado
+  perform importar_estabelecimentos(itens, '[]', 'escalonado');
+  select min(dias_atraso), max(dias_atraso), count(distinct dias_atraso)
+    into v_min, v_max, v_dist from v_cadencia where nome like 'Cliente %';
+  assert v_min >= -30 and v_max <= -1, format('escalonado dentro do ciclo: %s..%s', v_min, v_max);
+  assert v_dist >= 15, format('escalonado deve espalhar (>=15 dias distintos de 30), veio %s', v_dist);
+
+  -- reimportar não embaralha nem recomeça quem já existe
+  perform importar_estabelecimentos(itens, '[]', 'vencidos');
+  select min(dias_atraso), max(dias_atraso) into v_min, v_max from v_cadencia where nome like 'Cliente %';
+  assert v_max <= -1, 'reimport com outro modo não pode mexer em pontos existentes';
+
+  -- modo inválido é recusado
+  begin
+    perform importar_estabelecimentos(itens, '[]', 'qualquer');
+    raise exception 'ERRO: aceitou modo inválido';
+  exception when raise_exception then
+    assert sqlerrm like 'p_inicio inválido%', sqlerrm;
+  end;
+end $$;
+rollback;
+
 \echo 'OK: todos os testes de banco passaram'

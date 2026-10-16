@@ -1,7 +1,36 @@
 # Tempero Barão · Visitas — especificação funcional
 
-> Status: base de dados construída e testada; app ainda não construído. Atualiza o raciocínio de [`ponto-de-visitacao.md`](ponto-de-visitacao.md) agora que o caso é real.
-> Código: [`apps/tempero-barao-visitas/`](../apps/tempero-barao-visitas/). Visual/design fica para depois da funcionalidade.
+> Status (16/10/2026): banco, importador do Google Earth e app em **modo demonstração** prontos e testados com o mapa real da Barão. Falta ligar ao Supabase (multiusuário). Atualiza o raciocínio de [`ponto-de-visitacao.md`](ponto-de-visitacao.md).
+> Código: [`apps/tempero-barao-visitas/`](../apps/tempero-barao-visitas/) · Design system: rota `#/design-system` do app.
+
+---
+
+## 0. O que o mapa real da Barão mostrou (16/10)
+
+Importamos o arquivo real `rota dos vendedores` (761 marcações) e o sistema se comportou assim:
+
+| Achado | O que fizemos |
+|---|---|
+| **656 estabelecimentos** em 5 pastas: `JOÃO OLIVEIRA` (333), `VENDAS ATIVAS JOÃO OLIVEIRA` (150), `GISLANDIO SILVEIRA` (72), `VENDAS ATIVAS GISLANDIO` (73 + 28 em `Restaurante`) | Pasta vira **dono da carteira**; `VENDAS ATIVAS` vira status **ativo** |
+| Cada ponto traz o **cadastro do ERP** em texto (código do cliente, razão social, CNPJ, endereço, telefones) em ~21 formatos diferentes | Leitor próprio; o **código do ERP vira a chave estável** do ponto (mover/renomear o pino não duplica mais) |
+| O texto também traz **CPF, RG, e-mail e limite de crédito** | **Descartados na leitura** (LGPD: minimização). Testado: nada disso chega ao banco |
+| 43 pontos "RESTAURANTE - 256,21" / "COMERCIO R$ 931,30" **não são estabelecimentos**: são valores por bairro | Guardados como anotação do bairro; fora da lista de clientes |
+| **47 polígonos** = bairros de Parnaíba | Viram regiões; cada ponto recebe seu bairro |
+| **4 coordenadas erradas** (ex.: lat = lng = −2,94; um ponto em lat −29, lng −56) | Cliente entra **sem localização** e é listado para corrigir no Earth, em vez de poluir o mapa |
+| 15 pinos duplicados | Ignorados |
+| Pastas "do vendedor" (sem `VENDAS ATIVAS`) têm, em geral, clientes com cadastro no ERP **que não aparecem como venda ativa** | Sugerido: com ERP = **inativo (resgate)**, só pino = **em prospecção**. **A confirmar com a Barão** |
+
+### Decisão nova: como a cadência começa
+
+O mapa não diz quando cada cliente foi visitado pela última vez. Se todos entram "visitados hoje", o painel nasce 100% verde e a fila do vendedor nasce vazia. Na importação a gestão escolhe:
+
+- **Escalonado (recomendado):** os vencimentos se espalham ao longo do ciclo; a fila enche aos poucos, sem muralha de visitas num dia.
+- **Cobrar já:** todos vencem hoje; fila cheia em ordem de prioridade (mutirão de reativação).
+- **Do zero:** todos em dia; a cobrança só aparece depois de um intervalo.
+
+### Território grande: ainda em aberto
+
+Há pontos a mais de 100 km de Parnaíba (o 99º percentil está a ~128 km do centro). Um intervalo único (15/30/60 dias) não serve para o interior. Proposta, a validar com a Barão: **intervalo por cidade/região** e fila agrupada por cidade ("cidade X a cada N semanas"). **Pergunta: como vocês cobrem o interior hoje?**
 
 ---
 
@@ -162,9 +191,11 @@ Verificado por testes automatizados, incluindo teste de mutação (quebrei de pr
 
 | Marco | Entrega | Estado |
 |---|---|---|
-| 1 | Banco: modelo, cadência, permissões, importador KML, testes | **Feito** |
-| 2 | App do vendedor: Hoje, ficha, check-in, nota, offline | Próximo |
-| 3 | Painel do gestor, import e regras por tela | |
-| 4 | Aviso diário WhatsApp, reconciliação de pins | |
-| 5 | Promotoria/checklist PDV | |
-| 6 | Design e visual | Depois de validar a funcionalidade |
+| 1 | Banco: modelo, cadência, permissões, importação (migrações 0001–0003) + testes | **Feito** |
+| 2 | Importador do Google Earth no navegador (pastas, polígonos, ERP, LGPD) | **Feito** |
+| 3 | App: Hoje, Mapa, Ficha, Registrar visita, Painel, Esquecidos, Pontos (edição em lote), Importar, Ajustes | **Feito (modo demonstração)** |
+| 4 | Design system da marca (tokens, componentes, claro/escuro, acessibilidade auditada) | **Feito (v0.1)** |
+| 5 | **Supabase real**: login, multiusuário, fila offline com reenvio | Próximo |
+| 6 | Piloto com João e Gislandio (4–6 semanas, medir cobertura) | |
+| 7 | Aviso diário por WhatsApp; intervalo por cidade; reconciliar pinos movidos | |
+| 8 | Promotoria com checklist de PDV | |
