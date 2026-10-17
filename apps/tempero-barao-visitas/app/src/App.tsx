@@ -19,7 +19,7 @@ import { Logo } from './ui/logo';
 const Mapa = lazy(() => import('./screens/Mapa')); // Leaflet só carrega quando abre o mapa
 
 export default function App() {
-  const { pronto, erro, usuario } = useSessao();
+  const { pronto, erro, usuario, baixandoPrimeiraVez } = useSessao();
 
   if (erro) {
     return (
@@ -32,7 +32,7 @@ export default function App() {
     return (
       <div className="page stack" style={{ alignItems: 'center', paddingTop: '18dvh' }}>
         <Logo className="logo" />
-        <p className="muted small">Abrindo o banco de dados local…</p>
+        <p className="muted small">{baixandoPrimeiraVez ? 'Baixando seus clientes… (só na primeira vez)' : 'Abrindo o banco de dados local…'}</p>
       </div>
     );
   }

@@ -5,6 +5,8 @@ import { lerRaioCheckin, listarRegras, salvarRaioCheckin, salvarRegra, zerarTudo
 import { useAsync } from '../hooks/useAsync';
 import { useTema, type Tema } from '../hooks/useTema';
 import { ROTULO_STATUS } from '../lib/formatar';
+import { modoReal } from '../sync/modo';
+import { sincronizar, useEstadoSync } from '../sync/motor';
 import { ehGestao, useSessao } from '../state/sessao';
 import { Avatar, Campo } from '../ui/componentes';
 import { useToast } from '../ui/toast';
@@ -18,6 +20,8 @@ export default function Ajustes() {
   const regras = useAsync(() => (gestao ? listarRegras(usuario!.id) : Promise.resolve([])), [usuario?.id]);
   const raio = useAsync(() => (gestao ? lerRaioCheckin(usuario!.id) : Promise.resolve(150)), [usuario?.id]);
   const [confirmando, setConfirmando] = useState(false);
+  const real = modoReal();
+  const sync = useEstadoSync();
 
   const porStatus = new Map<string, RegraCadencia[]>();
   for (const r of regras.dados ?? []) porStatus.set(r.status, [...(porStatus.get(r.status) ?? []), r]);
@@ -37,7 +41,17 @@ export default function Ajustes() {
       <section className="card row">
         <Avatar nome={usuario!.nome} grande />
         <div className="grow"><div className="strong">{usuario!.nome}</div><div className="small muted">{usuario!.papel}</div></div>
-        <button className="btn btn-ghost" onClick={() => { sair(); nav('/entrar'); }}><LogOut size={18} aria-hidden /> Trocar usuário</button>
+        <button
+          className="btn btn-ghost"
+          onClick={() => {
+            if (real && sync.pendentes + sync.rejeitadas > 0) {
+              toast('aviso', `Há ${sync.pendentes + sync.rejeitadas} ação(ões) sem enviar. Sincronize (ou descarte as recusadas) antes de sair.`);
+              return;
+            }
+            sair();
+            nav('/entrar');
+          }}
+        ><LogOut size={18} aria-hidden /> {real ? 'Sair' : 'Trocar usuário'}</button>
       </section>
 
       <section className="card stack">
@@ -91,15 +105,29 @@ export default function Ajustes() {
 
       <section className="card stack">
         <h2 className="card-title">Dados deste aparelho</h2>
-        <p className="small muted">No modo demonstração tudo fica guardado no navegador, sem enviar nada para a internet. Apagar remove usuários, pontos e visitas.</p>
-        {!confirmando ? (
-          <button className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setConfirmando(true)}><Trash2 size={18} aria-hidden /> Apagar todos os dados…</button>
+        {real ? (
+          <>
+            <p className="small muted">
+              O app guarda neste aparelho uma cópia dos seus clientes, para funcionar sem sinal. O que você registrar offline fica na fila e segue para o servidor quando a internet voltar.
+              {sync.pendentes ? ` Aguardando envio: ${sync.pendentes}.` : ''}
+            </p>
+            <button className="btn btn-soft" style={{ alignSelf: 'flex-start' }} disabled={sync.ocupado} onClick={() => void sincronizar({ completo: true }).then(() => toast('ok', 'Dados atualizados.'))}>
+              Baixar tudo de novo
+            </button>
+          </>
         ) : (
-          <div className="banner perigo">
-            <span className="grow"><strong>Apagar tudo?</strong> Não dá para desfazer.</span>
-            <button className="btn btn-sm btn-ghost" onClick={() => setConfirmando(false)}>Cancelar</button>
-            <button className="btn btn-sm btn-danger" onClick={async () => { await zerarTudo(); sair(); await recarregar(); setConfirmando(false); toast('ok', 'Dados apagados.'); nav('/entrar'); }}>Apagar</button>
-          </div>
+          <>
+            <p className="small muted">No modo demonstração tudo fica guardado no navegador, sem enviar nada para a internet. Apagar remove usuários, pontos e visitas.</p>
+            {!confirmando ? (
+              <button className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setConfirmando(true)}><Trash2 size={18} aria-hidden /> Apagar todos os dados…</button>
+            ) : (
+              <div className="banner perigo">
+                <span className="grow"><strong>Apagar tudo?</strong> Não dá para desfazer.</span>
+                <button className="btn btn-sm btn-ghost" onClick={() => setConfirmando(false)}>Cancelar</button>
+                <button className="btn btn-sm btn-danger" onClick={async () => { await zerarTudo(); sair(); await recarregar(); setConfirmando(false); toast('ok', 'Dados apagados.'); nav('/entrar'); }}>Apagar</button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

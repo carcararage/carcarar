@@ -7,13 +7,18 @@ Sistema de cadência de visitas: nenhum ponto de venda fica esquecido. Especific
 
 | Parte | Estado |
 |---|---|
-| Banco (regras, permissões, cadência, cadastro, duplicados) | Pronto e testado em Postgres 16 (`supabase/migrations` 0001–0006) |
+| Banco (regras, permissões, cadência, cadastro, duplicados) | Pronto e testado em Postgres 16 (`supabase/migrations` 0001–0007) |
 | Importador do Google Earth (KML/KMZ) | Pronto, roda no navegador; testado com o mapa real da Barão |
 | Importador de planilha de clientes (XLSX/CSV) | Pronto: relatório impresso do ERP e tabela simples; testado com a listagem real (ver aviso abaixo) |
 | App (PWA) em **modo demonstração** | Pronto: Hoje, Mapa, Ficha, Registrar visita, Cadastrar cliente, Painel, Esquecidos, Pontos, Relatório de visitas (CSV/impressão), Importar, Ajustes, Design System |
-| App ligado ao **Supabase** (multiusuário de verdade) | **Falta**: ver "Próximos passos" |
+| App ligado ao **Supabase** (login, multiusuário, **offline** com fila de envio) | **Pronto e testado** com Postgres real e um "porteiro" simulado; falta só criar o projeto Supabase: ver [`supabase/README.md`](supabase/README.md) |
 
 No modo demonstração o banco (Postgres em WebAssembly, [PGlite](https://pglite.dev)) vive **dentro do navegador**, roda exatamente as mesmas migrações do Supabase e guarda tudo em IndexedDB. Serve para validar o processo com os vendedores e funciona offline, mas os dados ficam num só aparelho.
+
+## Dois modos
+
+- **Demonstração** (padrão, sem configurar nada): o banco (Postgres no navegador) fica só no aparelho; sem login; serve para testar e mostrar.
+- **Real** (com `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`, ver `app/.env.example`): login por e-mail e senha, dados no Supabase, **cópia local para trabalhar sem sinal** e fila de envio. Detalhes e passo a passo em [`supabase/README.md`](supabase/README.md).
 
 ## Rodar o app
 
@@ -35,6 +40,10 @@ Build estático (qualquer hospedagem, inclusive Netlify): `npm run build` → pa
 supabase/migrations/   0001 base · 0002 importação com ERP · 0003 início da cadência
                        0004 cadastro/duplicados/visibilidade · 0005 planilha sem apagar o mapa
                        0006 planilha casa com o mapa por CNPJ; nome provisório vira nome real
+                       0007 sincronização offline (sync_baixar / sync_enviar)
+supabase/setup_producao.sql  todas as migrações num arquivo só, para colar no Supabase
+supabase/README.md     passo a passo para colocar no ar + como o offline funciona
+app/src/sync/          motor de sincronização, fila offline, login (modo real)
 supabase/local/        stub do que o Supabase já entrega (usado em testes e no modo demo)
 supabase/tests/        suíte SQL + runner (Postgres real)
 app/src/kml/           leitor de KML/KMZ, texto do ERP, mapeamento pasta → status/vendedor
@@ -49,11 +58,12 @@ app/e2e/               fluxo no Chromium (smoke) e auditoria de acessibilidade (
 
 ```bash
 supabase/tests/run_tests.sh           # migrações + regras no Postgres real (precisa de psql/createdb)
-cd app && npx vitest run              # importadores + camada de dados em PGlite (56 testes)
+cd app && npx vitest run              # importadores + camada de dados em PGlite (67 testes, incl. celular × servidor)
 cd app && npm run build && npx vite preview --port 4173 &
 node e2e/smoke.mjs                    # fluxo completo no Chromium (KML=/caminho para usar o seu arquivo)
 node e2e/fluxos.mjs                   # planilha, cadastro, "vinculado a outro vendedor", mapa, relatório
 node e2e/a11y.mjs                     # axe-core, telas × temas claro/escuro (0 violações graves)
+node e2e/real.mjs                     # modo real: login, trabalho sem internet, volta do sinal (ver supabase/README.md)
 ```
 
 ## Regras de visibilidade
@@ -80,7 +90,7 @@ O fundo do mapa é o OpenStreetMap (sem chave; serve para demonstração e uso l
 
 ## Próximos passos
 
-1. **Supabase real**: trocar `app/src/db/api.ts` por chamadas ao Supabase (as regras já estão no SQL), login por e-mail/senha, fila offline com reenvio (a chave de idempotência já existe).
+1. **Criar o projeto Supabase e publicar o app** (`supabase/README.md`).
 2. Aviso diário por WhatsApp e reconciliação de pins movidos no Google Earth.
 3. Promotoria com checklist de PDV.
 

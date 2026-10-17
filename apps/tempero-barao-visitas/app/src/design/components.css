@@ -91,6 +91,10 @@
   font-weight: 560;
   white-space: nowrap;
 }
+.chip svg,
+.btn svg {
+  flex: none; /* ícone nunca encolhe dentro de botão/pílula */
+}
 button.chip {
   min-height: 40px;
   padding: 0 var(--space-4);
@@ -655,6 +659,15 @@ button.chip:not([aria-pressed='true']):hover {
   border: 2.5px solid currentColor;
   border-right-color: transparent;
   animation: giro 0.7s linear infinite;
+}
+/* ícone de "sincronizando" */
+.girar {
+  animation: giro 1s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .girar {
+    animation: none;
+  }
 }
 @keyframes giro {
   to {

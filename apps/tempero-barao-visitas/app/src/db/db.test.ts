@@ -324,4 +324,14 @@ describe('migrações do app', () => {
     const arquivos = readdirSync(new URL('../../../supabase/migrations/', import.meta.url)).filter((f) => f.endsWith('.sql')).sort();
     expect(MIGRACOES.map((m) => m.nome + '.sql')).toEqual(arquivos);
   });
+
+  it('o setup_producao.sql (colado no Supabase) contém exatamente as migrações atuais', async () => {
+    const { readFileSync } = await import('node:fs');
+    const pasta = new URL('../../../supabase/', import.meta.url);
+    const setup = readFileSync(new URL('setup_producao.sql', pasta), 'utf8');
+    const { MIGRACOES } = await import('./schema');
+    for (const m of MIGRACOES) {
+      expect(setup, `rode supabase/gerar_setup.sh (faltou ${m.nome})`).toContain(m.sql);
+    }
+  });
 });

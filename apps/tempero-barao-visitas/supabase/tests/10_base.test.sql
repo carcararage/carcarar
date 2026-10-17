@@ -819,4 +819,186 @@ begin
 end $$;
 rollback;
 
+-- ===========================================================================
+-- 13. Sincronização do celular (0007)
+-- ===========================================================================
+-- 13.1 baixar: cada um recebe só o que pode ver; carteira alheia chega mínima; delta funciona
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'V1', true);
+do $$
+declare s jsonb; r jsonb; n int;
+begin
+  s := sync_baixar();
+  assert (s ->> 'completo')::boolean and s ->> 'eu' = '00000000-0000-0000-0000-000000000001';
+  assert jsonb_array_length(s -> 'estabelecimentos') = 5, 'V1 recebe 5 pontos (k1,k2,k4,k5 completos + k3 mínimo): ' || jsonb_array_length(s -> 'estabelecimentos');
+  select e into r from jsonb_array_elements(s -> 'estabelecimentos') e where e ->> 'nome' = 'Lanchonete Teste 3';
+  assert r ->> 'vendedor_id' = '00000000-0000-0000-0000-000000000002', 'k3 vem vinculado ao V2';
+  assert r ->> 'lat' is not null, 'k3 traz o local';
+  assert not (r ? 'telefone') and not (r ? 'cnpj') and not (r ? 'observacoes') and not (r ? 'celular'), 'k3 sem contato/cadastro';
+  assert r ->> 'status' = 'prospecto' and (r -> 'atributos') = '{}'::jsonb, 'k3 sem status/atributos reais';
+  select e into r from jsonb_array_elements(s -> 'estabelecimentos') e where e ->> 'nome' like 'Restaurante Teste 1%';
+  assert r ->> 'status' = 'ativo' and r ->> 'tier' = 'A', 'k1 (meu) vem completo';
+  -- perfis: eu + dono do k3 (nada do gestor nem do promotor)
+  assert jsonb_array_length(s -> 'perfis') = 2, 'perfis necessários, não todos: ' || jsonb_array_length(s -> 'perfis');
+  assert s -> 'regioes' is not null, 'primeira vez traz regiões';
+  assert jsonb_array_length(s -> 'regras') = 9 and jsonb_array_length(s -> 'configuracoes') >= 2;
+
+  -- delta: nada mudou desde o futuro
+  s := sync_baixar(jsonb_build_object('desde', now() + interval '1 hour'));
+  assert not (s ->> 'completo')::boolean and jsonb_array_length(s -> 'estabelecimentos') = 0 and jsonb_typeof(s -> 'regioes') = 'null', 'delta não reenvia regiões';
+  -- ids força a releitura
+  s := sync_baixar(jsonb_build_object('desde', now() + interval '1 hour', 'ids', jsonb_build_array(t_eid('k1'), t_eid('k3'))));
+  assert jsonb_array_length(s -> 'estabelecimentos') = 2, 'ids relidos (um completo, um mínimo)';
+end $$;
+rollback;
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'G', true);
+do $$
+declare s jsonb;
+begin
+  s := sync_baixar();
+  assert jsonb_array_length(s -> 'estabelecimentos') = 5 and jsonb_array_length(s -> 'perfis') >= 4, 'gestão recebe tudo e todos os perfis';
+  assert (select bool_and(e ? 'telefone') from jsonb_array_elements(s -> 'estabelecimentos') e), 'tudo completo (colunas completas)';
+end $$;
+rollback;
+
+begin;
+set local role authenticated;   -- sem login
+do $$ begin
+  begin perform sync_baixar(); raise exception 'ERRO: sem login baixou';
+  exception when insufficient_privilege then null; end;
+  begin perform sync_enviar('[]'); raise exception 'ERRO: sem login enviou';
+  exception when insufficient_privilege then null; end;
+end $$;
+rollback;
+begin;
+set local role anon;
+do $$ begin
+  begin perform sync_baixar(); raise exception 'ERRO: anon baixou';
+  exception when insufficient_privilege then null; end;
+end $$;
+rollback;
+
+-- 13.2 enviar: vendedor
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'V1', true);
+do $$
+declare
+  r jsonb; v_id uuid := gen_random_uuid(); c1 uuid := gen_random_uuid(); c2 uuid := gen_random_uuid();
+  c3 uuid := gen_random_uuid(); id_novo uuid := gen_random_uuid(); id_dup uuid := gen_random_uuid(); n int; v record;
+begin
+  -- visita no ponto exato: confirmada, id = chave, reenvio não duplica
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', gen_random_uuid(), 'tipo', 'visita', 'dados', jsonb_build_object(
+        'chave', c1, 'estabelecimento_id', t_eid('k1'), 'tipo', 'venda', 'checkin_em', now() - interval '3 hours',
+        'checkout_em', now() - interval '2 hours 50 minutes', 'checkin_lat', -2.9050, 'checkin_lng', -41.7760,
+        'resultado', 'pedido', 'valor_pedido', 120.5, 'observacao', 'fez pedido'))));
+  assert (r -> 0 ->> 'ok')::boolean, 'visita aceita: ' || r::text;
+  select * into v from visitas where chave_idempotencia = c1;
+  assert v.id = c1 and v.validacao = 'confirmada' and v.usuario_id = '00000000-0000-0000-0000-000000000001', 'servidor valida e fixa o autor';
+  assert v.checkin_em < now() - interval '2 hours', 'mantém o relógio do aparelho';
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', gen_random_uuid(), 'tipo', 'visita', 'dados', jsonb_build_object(
+        'chave', c1, 'estabelecimento_id', t_eid('k1'), 'checkin_em', now(), 'checkin_lat', -2.9050, 'checkin_lng', -41.7760))));
+  assert (r -> 0 ->> 'ok')::boolean and (select count(*) from visitas where chave_idempotencia = c1) = 1, 'reenvio idempotente';
+
+  -- GPS longe: aceita, mas fica "fora do raio"
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', gen_random_uuid(), 'tipo', 'visita', 'dados', jsonb_build_object(
+        'chave', c2, 'estabelecimento_id', t_eid('k2'), 'checkin_em', now(), 'checkin_lat', -2.95, 'checkin_lng', -41.7800))));
+  assert (select validacao from visitas where chave_idempotencia = c2) = 'fora_do_raio';
+
+  -- visita em ponto de outro vendedor: recusada (e não derruba a seguinte do mesmo lote)
+  r := sync_enviar(jsonb_build_array(
+        jsonb_build_object('id', 'a1', 'tipo', 'visita', 'dados', jsonb_build_object(
+          'chave', c3, 'estabelecimento_id', t_eid('k3'), 'checkin_em', now())),
+        jsonb_build_object('id', 'a2', 'tipo', 'tipo_inexistente', 'dados', '{}'::jsonb),
+        jsonb_build_object('id', 'a3', 'tipo', 'contato', 'dados', jsonb_build_object('id', t_eid('k1'), 'telefone', '(86) 3333-0000', 'observacoes', 'ligar à tarde'))));
+  assert not (r -> 0 ->> 'ok')::boolean and r -> 0 ->> 'codigo' = '42501', 'visita em ponto alheio recusada: ' || r::text;
+  assert not (r -> 1 ->> 'ok')::boolean and r -> 1 ->> 'codigo' = '22023', 'tipo desconhecido recusado';
+  assert (r -> 2 ->> 'ok')::boolean and (select telefone from estabelecimentos where id = t_eid('k1')) = '(86) 3333-0000', 'a terceira passou';
+  assert not exists (select 1 from visitas where chave_idempotencia = c3);
+  assert r -> 0 ->> 'id' = 'a1', 'resposta devolve o id da ação';
+
+  -- contato em ponto alheio: recusado
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'b', 'tipo', 'contato', 'dados', jsonb_build_object('id', t_eid('k3'), 'telefone', '1'))));
+  assert not (r -> 0 ->> 'ok')::boolean, 'contato de cliente alheio recusado';
+
+  -- cadastro: id do aparelho, reenvio devolve o mesmo, duplicado recusado
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'c', 'tipo', 'cadastro', 'dados', jsonb_build_object(
+        'id', id_novo, 'nome', 'Cliente Cadastrado Offline', 'cidade', 'Parnaíba', 'status', 'ativo', 'forcar', true))));
+  assert (r -> 0 ->> 'ok')::boolean, 'cadastro aceito: ' || r::text;
+  select * into v from estabelecimentos where id = id_novo;
+  assert v.chave_externa = 'app:' || id_novo and v.vendedor_id = '00000000-0000-0000-0000-000000000001' and v.status = 'ativo', 'entra na carteira do autor; "forcar" não vale para vendedor';
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'c', 'tipo', 'cadastro', 'dados', jsonb_build_object(
+        'id', id_novo, 'nome', 'Cliente Cadastrado Offline', 'cidade', 'Parnaíba'))));
+  assert (r -> 0 ->> 'ok')::boolean and (select count(*) from estabelecimentos where nome = 'Cliente Cadastrado Offline') = 1, 'reenvio de cadastro idempotente';
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'd', 'tipo', 'cadastro', 'dados', jsonb_build_object(
+        'id', id_dup, 'nome', 'Cliente Cadastrado Offline', 'cidade', 'Parnaíba'))));
+  assert not (r -> 0 ->> 'ok')::boolean and r -> 0 ->> 'codigo' = '23505', 'duplicado recusado: ' || r::text;
+  -- visita no cliente que acabou de cadastrar (mesmo lote lógico: id gerado no aparelho)
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'e', 'tipo', 'visita', 'dados', jsonb_build_object(
+        'chave', gen_random_uuid(), 'estabelecimento_id', id_novo, 'checkin_em', now()))));
+  assert (r -> 0 ->> 'ok')::boolean, 'visita ao cliente recém-cadastrado';
+
+  -- assumir: ok, reenvio ok, ponto alheio recusado
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'f', 'tipo', 'assumir', 'dados', jsonb_build_object('id', t_eid('k5')))));
+  assert (r -> 0 ->> 'ok')::boolean and (select vendedor_id from estabelecimentos where chave_externa = 'k5') = '00000000-0000-0000-0000-000000000001';
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'f', 'tipo', 'assumir', 'dados', jsonb_build_object('id', t_eid('k5')))));
+  assert (r -> 0 ->> 'ok')::boolean, 'reenvio de assumir';
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'g', 'tipo', 'assumir', 'dados', jsonb_build_object('id', t_eid('k3')))));
+  assert not (r -> 0 ->> 'ok')::boolean, 'ponto de outro vendedor não se assume';
+
+  -- localização: ponto sem coordenada ganha uma vez; reenvio ok; mudar depois, não
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'h', 'tipo', 'localizacao', 'dados', jsonb_build_object('id', t_eid('k4'), 'lat', -2.93, 'lng', -41.76))));
+  assert (r -> 0 ->> 'ok')::boolean;
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'h', 'tipo', 'localizacao', 'dados', jsonb_build_object('id', t_eid('k4'), 'lat', -2.93, 'lng', -41.76))));
+  assert (r -> 0 ->> 'ok')::boolean, 'reenvio de localização';
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'i', 'tipo', 'localizacao', 'dados', jsonb_build_object('id', t_eid('k4'), 'lat', -2.5, 'lng', -41.0))));
+  assert not (r -> 0 ->> 'ok')::boolean, 'vendedor não move pino existente';
+
+  -- ações de gestão: vendedor não faz
+  r := sync_enviar(jsonb_build_array(
+        jsonb_build_object('id', 'j', 'tipo', 'atualizar_pontos', 'dados', jsonb_build_object('ids', jsonb_build_array(t_eid('k1')), 'tier', 'C')),
+        jsonb_build_object('id', 'k', 'tipo', 'regra', 'dados', jsonb_build_object('status', 'ativo', 'tier', 'A', 'intervalo_dias', 99, 'peso', 1)),
+        jsonb_build_object('id', 'l', 'tipo', 'raio', 'dados', jsonb_build_object('metros', 5000)),
+        jsonb_build_object('id', 'm', 'tipo', 'validar_visita', 'dados', jsonb_build_object('id', c2))));
+  assert not exists (select 1 from jsonb_array_elements(r) x where (x ->> 'ok')::boolean), 'vendedor não faz ações de gestão: ' || r::text;
+  assert (select tier from estabelecimentos where id = t_eid('k1')) = 'A';
+  assert (select validacao from visitas where chave_idempotencia = c2) = 'fora_do_raio';
+
+  -- lote grande demais
+  begin perform sync_enviar((select jsonb_agg(jsonb_build_object('id', g, 'tipo', 'x')) from generate_series(1, 201) g));
+    raise exception 'ERRO: lote enorme aceito';
+  exception when sqlstate '22023' then null; end;
+end $$;
+rollback;
+
+-- 13.3 enviar: gestão
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'G', true);
+do $$
+declare r jsonb; c uuid := gen_random_uuid(); id_v uuid;
+begin
+  r := sync_enviar(jsonb_build_array(
+        jsonb_build_object('id', '1', 'tipo', 'atualizar_pontos', 'dados', jsonb_build_object('ids', jsonb_build_array(t_eid('k3')), 'tier', 'B', 'vendedor_id', null)),
+        jsonb_build_object('id', '2', 'tipo', 'regra', 'dados', jsonb_build_object('status', 'ativo', 'tier', 'A', 'intervalo_dias', 12, 'peso', 3)),
+        jsonb_build_object('id', '3', 'tipo', 'raio', 'dados', jsonb_build_object('metros', 200))));
+  assert not exists (select 1 from jsonb_array_elements(r) x where not (x ->> 'ok')::boolean), 'gestão faz tudo: ' || r::text;
+  assert (select tier from estabelecimentos where id = t_eid('k3')) = 'B' and (select vendedor_id from estabelecimentos where id = t_eid('k3')) is null, 'tirou o dono (vendedor_id null)';
+  assert (select intervalo_dias from regras_cadencia where status = 'ativo' and tier = 'A') = 12;
+  assert (select valor #>> '{}' from configuracoes where chave = 'raio_checkin_m') = '200';
+  -- validar visita
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'v', 'tipo', 'visita', 'dados', jsonb_build_object(
+        'chave', c, 'estabelecimento_id', t_eid('k1'), 'checkin_em', now(), 'checkin_lat', -2.99, 'checkin_lng', -41.7760))));
+  assert (select validacao from visitas where id = c) = 'fora_do_raio';
+  r := sync_enviar(jsonb_build_array(jsonb_build_object('id', 'v2', 'tipo', 'validar_visita', 'dados', jsonb_build_object('id', c))));
+  assert (r -> 0 ->> 'ok')::boolean and (select validacao from visitas where id = c) = 'validada_gestor';
+  -- visita atualizada aparece no delta
+  assert jsonb_array_length((sync_baixar(jsonb_build_object('desde', now() - interval '1 minute'))) -> 'visitas') >= 1;
+end $$;
+rollback;
+
 \echo 'OK: todos os testes de banco passaram'

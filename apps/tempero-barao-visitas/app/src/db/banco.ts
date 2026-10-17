@@ -1,4 +1,5 @@
 import { PGlite, type Transaction } from '@electric-sql/pglite';
+import { DDL_LOCAL } from '../sync/local';
 import { MIGRACOES, STUB_SUPABASE } from './schema';
 
 /**
@@ -29,6 +30,11 @@ export function esquecerBanco() {
   aberto = null;
 }
 
+/** Só para testes: troca o "aparelho" (outra cópia local) sem reabrir. */
+export function usarBanco(db: PGlite) {
+  aberto = Promise.resolve(db);
+}
+
 async function migrar(db: PGlite) {
   const existe = await db.query<{ t: string | null }>(`select to_regclass('public._migracoes')::text as t`);
   if (!existe.rows[0].t) {
@@ -43,6 +49,7 @@ async function migrar(db: PGlite) {
     await db.exec(m.sql);
     await db.query(`insert into public._migracoes (nome) values ($1)`, [m.nome]);
   }
+  await db.exec(DDL_LOCAL); // fila e estado de sincronização (só existem no aparelho)
 }
 
 export type Tx = Transaction;

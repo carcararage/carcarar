@@ -1,6 +1,10 @@
 import type { ItemImportado, RegiaoImportada } from '../kml/parseKml';
 import { slug, type Vendedor } from '../kml/mapeamento';
 import { abrirBanco, comoUsuario } from './banco';
+import { avisarFila, enfileirarTx } from '../sync/fila';
+import { modoReal } from '../sync/modo';
+import { sincronizar } from '../sync/motor';
+import { ErroRede, transporteAtual } from '../sync/transporte';
 
 /**
  * Camada de dados do app. Cada função roda como um usuário (RLS vale) e devolve tipos simples.
@@ -62,7 +66,9 @@ export async function garantirVendedores(vendedores: Vendedor[]): Promise<Usuari
   const out: Usuario[] = [];
   for (const v of vendedores) {
     const ja = existentes.find((u) => u.chaveImport === v.chave);
-    out.push(ja ?? (await criarUsuario(v.nome, 'vendedor', v.chave)));
+    if (ja) out.push(ja);
+    else if (!modoReal()) out.push(await criarUsuario(v.nome, 'vendedor', v.chave));
+    // modo real: quem cria usuário é a administração (Supabase Auth); sem perfil, a importação conta "vendedor não encontrado"
   }
   return out;
 }
@@ -70,6 +76,10 @@ export async function garantirVendedores(vendedores: Vendedor[]): Promise<Usuari
 /** Modo demo: dá ao vendedor a chave de vínculo usada nas importações (no Supabase, o admin define). */
 export async function garantirChaveImport(id: string, nome: string): Promise<string> {
   const db = await abrirBanco();
+  if (modoReal()) {
+    const r = await db.query<{ c: string | null }>(`select chave_import as c from perfis where id = $1`, [id]);
+    return r.rows[0]?.c ?? slug(nome);
+  }
   await db.query(`update perfis set chave_import = coalesce(chave_import, $2) where id = $1`, [id, slug(nome)]);
   return (await db.query<{ c: string }>(`select chave_import as c from perfis where id = $1`, [id])).rows[0].c;
 }
@@ -428,27 +438,40 @@ export interface VisitaRegistrada {
 
 export async function registrarVisita(uid: string, v: NovaVisita): Promise<VisitaRegistrada> {
   return comoUsuario(uid, async (tx) => {
-    await tx.query(
-      `insert into visitas (chave_idempotencia, estabelecimento_id, usuario_id, tipo, checkin_em, checkout_em,
+    // id = chave: o aparelho decide o id, então a visita offline e a do servidor são a MESMA linha
+    const ins = await tx.query(
+      `insert into visitas (id, chave_idempotencia, estabelecimento_id, usuario_id, tipo, checkin_em, checkout_em,
                             checkin_lat, checkin_lng, resultado, valor_pedido, proximo_passo, retorno_em, observacao)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       values ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        on conflict (chave_idempotencia) do nothing`,
       [
         v.chave, v.estabelecimentoId, uid, v.tipo, v.checkinEm.toISOString(), v.checkoutEm.toISOString(),
         v.gps?.lat ?? null, v.gps?.lng ?? null, v.resultado, v.valorPedido, v.proximoPasso, v.retornoEm, v.observacao,
       ],
     );
+    if (ins.affectedRows) {
+      await enfileirarTx(tx, 'visita', {
+        chave: v.chave, estabelecimento_id: v.estabelecimentoId, tipo: v.tipo,
+        checkin_em: v.checkinEm.toISOString(), checkout_em: v.checkoutEm.toISOString(),
+        checkin_lat: v.gps?.lat ?? null, checkin_lng: v.gps?.lng ?? null, resultado: v.resultado,
+        valor_pedido: v.valorPedido, proximo_passo: v.proximoPasso, retorno_em: v.retornoEm, observacao: v.observacao,
+      }, v.estabelecimentoId);
+    }
     const r = await tx.query<{ id: string; validacao: Validacao; distancia_m: number | null }>(
       `select id, validacao::text as validacao, distancia_m from visitas where chave_idempotencia = $1`,
       [v.chave],
     );
     const x = r.rows[0];
     return { id: x.id, validacao: x.validacao, distanciaM: num(x.distancia_m) };
-  });
+  }).then((r) => (avisarFila(), r));
 }
 
 export async function assumirPonto(uid: string, id: string): Promise<void> {
-  await comoUsuario(uid, (tx) => tx.query(`select assumir_estabelecimento($1)`, [id]));
+  await comoUsuario(uid, async (tx) => {
+    await tx.query(`select assumir_estabelecimento($1)`, [id]);
+    await enfileirarTx(tx, 'assumir', { id }, id);
+  });
+  avisarFila();
 }
 
 export async function editarContato(
@@ -456,12 +479,14 @@ export async function editarContato(
   id: string,
   d: { telefone: string | null; celular: string | null; contato: string | null; observacoes: string | null },
 ): Promise<void> {
-  await comoUsuario(uid, (tx) =>
-    tx.query(
+  await comoUsuario(uid, async (tx) => {
+    await tx.query(
       `update estabelecimentos set telefone = $2, celular = $3, contato = $4, observacoes = $5 where id = $1`,
       [id, d.telefone, d.celular, d.contato, d.observacoes],
-    ),
-  );
+    );
+    await enfileirarTx(tx, 'contato', { id, ...d }, id);
+  });
+  avisarFila();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -582,7 +607,11 @@ export async function visitasParaValidar(uid: string): Promise<VisitaParaValidar
 }
 
 export async function validarVisita(uid: string, id: string): Promise<void> {
-  await comoUsuario(uid, (tx) => tx.query(`update visitas set validacao = 'validada_gestor' where id = $1`, [id]));
+  await comoUsuario(uid, async (tx) => {
+    await tx.query(`update visitas set validacao = 'validada_gestor' where id = $1`, [id]);
+    await enfileirarTx(tx, 'validar_visita', { id });
+  });
+  avisarFila();
 }
 
 export interface Totais {
@@ -708,8 +737,12 @@ export async function atualizarPontos(uid: string, ids: string[], e: EdicaoPonto
     if ('vendedorId' in e) sets.push(`vendedor_id = ${p(e.vendedorId ?? null)}::uuid`);
     if (!sets.length) return 0;
     const r = await tx.query(`update estabelecimentos set ${sets.join(', ')} where id = any($1::uuid[])`, par);
+    await enfileirarTx(tx, 'atualizar_pontos', {
+      ids, status: e.status, tier: e.tier, segmento: e.segmento,
+      ...('vendedorId' in e ? { vendedor_id: e.vendedorId ?? null } : {}),
+    });
     return r.affectedRows ?? 0;
-  });
+  }).then((n) => (avisarFila(), n));
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -732,6 +765,7 @@ export async function importarKml(
   regioes: RegiaoImportada[],
   inicio: InicioCadencia = 'zero',
 ): Promise<ResultadoImportacao> {
+  if (modoReal()) return importarNoServidor(itens, regioes, inicio);
   return comoUsuario(uid, async (tx) => {
     const r = await tx.query<{ r: Record<string, number> }>(
       `select importar_estabelecimentos($1::jsonb, $2::jsonb, $3::text) as r`,
@@ -745,6 +779,31 @@ export async function importarKml(
       vendedorNaoEncontrado: x.vendedor_nao_encontrado,
     };
   });
+}
+
+/**
+ * Modo real: a importação é do servidor (fonte da verdade) e exige internet. Vai em lotes para não
+ * estourar o tempo limite de uma chamada; as regiões (polígonos) seguem no primeiro lote. Depois,
+ * baixa tudo de novo para o aparelho.
+ */
+async function importarNoServidor(itens: ItemImportado[], regioes: RegiaoImportada[], inicio: InicioCadencia): Promise<ResultadoImportacao> {
+  const t = transporteAtual();
+  if (!t) throw new ErroRede('Importar exige conexão com a internet e login.');
+  const total: ResultadoImportacao = { inseridos: 0, atualizados: 0, regioes: 0, vendedorNaoEncontrado: 0 };
+  const LOTE = 300;
+  for (let i = 0; i < Math.max(itens.length, 1); i += LOTE) {
+    const x = await t.rpc<Record<string, number>>('importar_estabelecimentos', {
+      p_itens: itens.slice(i, i + LOTE),
+      p_regioes: i === 0 ? regioes : [],
+      p_inicio: inicio,
+    });
+    total.inseridos += x.inseridos;
+    total.atualizados += x.atualizados;
+    total.regioes += x.regioes;
+    total.vendedorNaoEncontrado += x.vendedor_nao_encontrado;
+  }
+  await sincronizar({ completo: true });
+  return total;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -774,13 +833,15 @@ export async function listarRegras(uid: string): Promise<RegraCadencia[]> {
 }
 
 export async function salvarRegra(uid: string, r: RegraCadencia): Promise<void> {
-  await comoUsuario(uid, (tx) =>
-    tx.query(
+  await comoUsuario(uid, async (tx) => {
+    await tx.query(
       `update regras_cadencia set intervalo_dias = $3, peso = $4
         where status = $1::status_comercial and tier = $2::tier_cliente`,
       [r.status, r.tier, r.intervaloDias, r.peso],
-    ),
-  );
+    );
+    await enfileirarTx(tx, 'regra', { status: r.status, tier: r.tier, intervalo_dias: r.intervaloDias, peso: r.peso });
+  });
+  avisarFila();
 }
 
 export async function lerRaioCheckin(uid: string): Promise<number> {
@@ -791,9 +852,11 @@ export async function lerRaioCheckin(uid: string): Promise<number> {
 }
 
 export async function salvarRaioCheckin(uid: string, metros: number): Promise<void> {
-  await comoUsuario(uid, (tx) =>
-    tx.query(`update configuracoes set valor = to_jsonb($1::int) where chave = 'raio_checkin_m'`, [metros]),
-  );
+  await comoUsuario(uid, async (tx) => {
+    await tx.query(`update configuracoes set valor = to_jsonb($1::int) where chave = 'raio_checkin_m'`, [metros]);
+    await enfileirarTx(tx, 'raio', { metros });
+  });
+  avisarFila();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -869,17 +932,21 @@ export class ErroDuplicado extends Error {
 }
 
 export async function cadastrarCliente(uid: string, c: NovoCliente): Promise<string> {
+  const id = crypto.randomUUID(); // o aparelho decide o id: cadastro offline e servidor são a mesma linha
   const payload = {
-    nome: c.nome, razao_social: c.razaoSocial, cnpj: c.cnpj, codigo_erp: c.codigoErp, telefone: c.telefone,
+    id, nome: c.nome, razao_social: c.razaoSocial, cnpj: c.cnpj, codigo_erp: c.codigoErp, telefone: c.telefone,
     celular: c.celular, contato: c.contato, endereco: c.endereco, bairro: c.bairro, cidade: c.cidade, uf: c.uf,
     cep: c.cep, segmento: c.segmento, tier: c.tier, status: c.status, vendedor_id: c.vendedorId ?? undefined,
     lat: c.lat ?? undefined, lng: c.lng ?? undefined, observacoes: c.observacoes, forcar: c.forcar,
   };
   try {
-    return await comoUsuario(uid, async (tx) => {
+    const novo = await comoUsuario(uid, async (tx) => {
       const r = await tx.query<{ id: string }>(`select cadastrar_estabelecimento($1::jsonb) as id`, [JSON.stringify(payload)]);
+      await enfileirarTx(tx, 'cadastro', payload, r.rows[0].id);
       return r.rows[0].id;
     });
+    avisarFila();
+    return novo;
   } catch (e) {
     const err = e as { code?: string; message?: string; detail?: string };
     if (err.code === '23505') throw new ErroDuplicado(err.message ?? 'Cliente já cadastrado', err.detail ?? null);
@@ -888,7 +955,11 @@ export async function cadastrarCliente(uid: string, c: NovoCliente): Promise<str
 }
 
 export async function definirLocalizacao(uid: string, id: string, lat: number, lng: number): Promise<void> {
-  await comoUsuario(uid, (tx) => tx.query(`select definir_localizacao($1, $2::float8, $3::float8)`, [id, lat, lng]));
+  await comoUsuario(uid, async (tx) => {
+    await tx.query(`select definir_localizacao($1, $2::float8, $3::float8)`, [id, lat, lng]);
+    await enfileirarTx(tx, 'localizacao', { id, lat, lng }, id);
+  });
+  avisarFila();
 }
 
 // ---------------------------------------------------------------------------------------------

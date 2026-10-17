@@ -5,6 +5,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useTema } from '../hooks/useTema';
 import { ehGestao, useSessao } from '../state/sessao';
 import { Avatar } from '../ui/componentes';
+import { IndicadorSync, useAvisosSync } from '../ui/Sincronizacao';
 import { Logo } from '../ui/logo';
 
 interface Aba {
@@ -18,6 +19,7 @@ interface Aba {
 
 export default function Shell() {
   const { usuario } = useSessao();
+  useAvisosSync();
   const { tema, alternar } = useTema();
   const gestao = ehGestao(usuario);
   const abas: Aba[] = gestao
@@ -55,6 +57,7 @@ export default function Shell() {
             <Settings size={20} aria-hidden /> Ajustes
           </NavLink>
         </nav>
+        <div style={{ padding: '0 var(--space-2)' }}><IndicadorSync /></div>
         <div className="row" style={{ padding: '0 var(--space-2)' }}>
           <Avatar nome={usuario!.nome} />
           <div className="grow">
@@ -72,6 +75,7 @@ export default function Shell() {
           <header className="page-head" style={{ display: 'flex' }}>
             <span className="lg-hide"><Logo className="logo" /></span>
             <div className="topbar-actions lg-hide">
+              <IndicadorSync />
               <button className="btn btn-ghost btn-icon" onClick={alternar} aria-label="Alternar tema claro/escuro">
                 {escuro ? <Sun size={18} /> : <Moon size={18} />}
               </button>

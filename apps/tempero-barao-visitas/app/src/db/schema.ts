@@ -7,6 +7,7 @@ import m0003 from '../../../supabase/migrations/0003_inicio_da_cadencia.sql?raw'
 import m0004 from '../../../supabase/migrations/0004_cadastro_e_visibilidade.sql?raw';
 import m0005 from '../../../supabase/migrations/0005_importacao_de_planilha.sql?raw';
 import m0006 from '../../../supabase/migrations/0006_planilha_casa_com_mapa.sql?raw';
+import m0007 from '../../../supabase/migrations/0007_sincronizacao.sql?raw';
 
 export const MIGRACOES: { nome: string; sql: string }[] = [
   { nome: '0001_base', sql: m0001 },
@@ -15,6 +16,7 @@ export const MIGRACOES: { nome: string; sql: string }[] = [
   { nome: '0004_cadastro_e_visibilidade', sql: m0004 },
   { nome: '0005_importacao_de_planilha', sql: m0005 },
   { nome: '0006_planilha_casa_com_mapa', sql: m0006 },
+  { nome: '0007_sincronizacao', sql: m0007 },
 ];
 
 export const STUB_SUPABASE = stub;
