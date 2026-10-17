@@ -23,8 +23,8 @@ jobs:
       - name: Chamar ping() no Supabase
         env:
           # valores públicos por desenho (a chave publishable vai dentro do app). NUNCA coloque a service_role aqui.
-          SUPABASE_URL: ${{ vars.SUPABASE_URL || 'https://odtufjckoetwwkyhhfiy.supabase.co' }}
-          SUPABASE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_f-03j2WBEw1aTWRyDQ-h7w_M8WFhDVm' }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL || 'https://uozawaszfwsmpbeoltfm.supabase.co' }}
+          SUPABASE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_i1CkBa_YjKTrpswqTjxRVA_uokU9opt' }}
         run: |
           for i in 1 2 3; do
             resp=$(curl -sS --max-time 30 -X POST "$SUPABASE_URL/rest/v1/rpc/ping" \
