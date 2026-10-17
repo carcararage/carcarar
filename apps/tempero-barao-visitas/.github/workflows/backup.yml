@@ -1,0 +1,59 @@
+# Cópia de segurança automática (o plano gratuito do Supabase não faz) + mantém o projeto ativo.
+# A cada 5 dias: chama o ping() e baixa os dados do banco; guarda por 90 dias nos "Artifacts" desta execução.
+# Se falhar (ex.: projeto pausado), o GitHub avisa por e-mail. Segredos: SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD.
+# Opcional: BACKUP_PASSPHRASE (se existir, o arquivo é criptografado). Variáveis: SUPABASE_PROJECT_REF e,
+# para o ping, SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY (valores públicos).
+name: Backup e manter ativo
+on:
+  schedule:
+    - cron: '37 6 */5 * *' # 03:37 em Parnaíba, dias 1, 6, 11, 16, 21, 26 e 31
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ping (mantém o projeto acordado)
+        env:
+          URL: ${{ vars.SUPABASE_URL }}
+          KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          for i in 1 2 3; do
+            resp=$(curl -sS --max-time 30 -X POST "$URL/rest/v1/rpc/ping" -H "apikey: $KEY" -H "Content-Type: application/json" -d '{}' || true)
+            if echo "$resp" | grep -q '"ok": *true'; then echo "ok: $resp"; exit 0; fi
+            echo "tentativa $i falhou: ${resp:-sem resposta}"; sleep 20
+          done
+          echo "O Supabase não respondeu ao ping. Se o projeto estiver pausado, reative em supabase.com/dashboard."
+          exit 1
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Ligar ao projeto
+        run: supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+      - name: Baixar os dados
+        run: |
+          mkdir -p backup
+          data=$(date -u +%Y-%m-%d)
+          supabase db dump --linked --password "$SUPABASE_DB_PASSWORD" --data-only --use-copy -f "backup/barao-dados-$data.sql"
+          supabase db dump --linked --password "$SUPABASE_DB_PASSWORD" -f "backup/barao-estrutura-$data.sql"
+          ls -la backup
+      - name: Criptografar (se houver senha de backup)
+        if: ${{ env.BACKUP_PASSPHRASE != '' }}
+        run: |
+          for f in backup/*.sql; do
+            gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" --symmetric --cipher-algo AES256 -o "$f.gpg" "$f"
+            rm "$f"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backup-barao-${{ github.run_id }}
+          path: backup/
+          retention-days: 90
+          if-no-files-found: error

@@ -1,0 +1,6 @@
+# Configuração mínima para o CLI do Supabase publicar migrações e funções a partir do GitHub.
+project_id = "barao-visitas"
+
+[functions.gerir-usuarios]
+# a função confere o login sozinha (o gateway não reconhece as chaves novas "publishable")
+verify_jwt = false

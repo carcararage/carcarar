@@ -1,0 +1,23 @@
+# Publicação automática no Netlify a cada push na branch main (o app fica em app/).
+# As chaves públicas do Supabase (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) ficam nas variáveis do site no Netlify.
+[build]
+  base = "app"
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "same-origin"
+    X-Frame-Options = "DENY"
+    Permissions-Policy = "geolocation=(self), camera=(), microphone=()"
+
+# o service worker nunca pode ficar preso em cache: é ele que traz as versões novas do app
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

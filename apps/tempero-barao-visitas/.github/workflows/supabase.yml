@@ -1,0 +1,46 @@
+# Publica no Supabase (banco e funções) quando algo muda em supabase/migrations ou supabase/functions na main.
+# Precisa dos segredos: SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD  e da variável: SUPABASE_PROJECT_REF.
+# 1ª vez (o banco já foi instalado à mão): Actions → "Supabase · publicar" → Run workflow → marque "reparar_historico".
+name: Supabase · publicar
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/migrations/**', 'supabase/functions/**', 'supabase/config.toml']
+  workflow_dispatch:
+    inputs:
+      reparar_historico:
+        description: 'Só na 1ª vez: registrar as migrações que já foram aplicadas à mão'
+        type: boolean
+        default: false
+
+concurrency:
+  group: supabase-publicar
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Ligar ao projeto
+        run: supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+      - name: Registrar migrações já aplicadas à mão (só na 1ª vez)
+        if: ${{ inputs.reparar_historico }}
+        run: |
+          for f in supabase/migrations/*.sql; do
+            v=$(basename "$f" | cut -d_ -f1)
+            echo "marcando $v como aplicada"
+            supabase migration repair --status applied "$v" --password "$SUPABASE_DB_PASSWORD"
+          done
+      - name: Aplicar migrações novas
+        run: supabase db push --password "$SUPABASE_DB_PASSWORD"
+      - name: Publicar função gerir-usuarios
+        run: supabase functions deploy gerir-usuarios --no-verify-jwt --project-ref "$PROJECT_REF"

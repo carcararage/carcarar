@@ -1,0 +1,43 @@
+name: Testes
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Regras do banco (migrações + testes SQL)
+        run: supabase/tests/run_tests.sh
+      - name: Dependências
+        working-directory: app
+        run: npm ci
+      - name: Tipos
+        working-directory: app
+        run: npx tsc --noEmit
+      - name: Testes do app (inclui celular × servidor)
+        working-directory: app
+        run: npx vitest run
+      - name: Build
+        working-directory: app
+        run: npm run build
