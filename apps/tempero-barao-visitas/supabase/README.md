@@ -30,6 +30,17 @@ Menu **Authentication → Sign In / Providers** (ou *Settings*):
 1. **Authentication → Users → Add user → Create new user**: um por pessoa (gestão, João, Gislandio), com e-mail e uma senha inicial, marcando **Auto Confirm User**.
 2. Abra [`passo2_usuarios.sql`](./passo2_usuarios.sql), troque os e-mails e rode no **SQL Editor**. Isso define quem é admin e quem é vendedor.
 
+## 4b. Equipe: criar vendedores dentro do sistema (opcional, recomendado)
+
+Só o servidor consegue criar logins, por isso há uma pequena função segura (`functions/gerir-usuarios/index.ts`). Ela só obedece ao **administrador logado**.
+
+1. No Supabase: **Edge Functions → Deploy a new function → Via Editor**.
+2. Nome: `gerir-usuarios`. Apague o exemplo e cole **todo** o conteúdo de `supabase/functions/gerir-usuarios/index.ts`. Clique em **Deploy**.
+3. Abra a função → **Settings/Details** e **desligue "Verify JWT"** (a função já confere o login por conta própria; a verificação do gateway não reconhece as chaves novas). Não é preciso colar nenhuma chave: o Supabase injeta a de serviço no ambiente da função.
+4. No app, entre como administrador: aparece o menu **Equipe** (no computador, na barra lateral). Lá você cria vendedores (nome, e-mail, senha gerada), troca senhas e desativa quem sair. Cada pessoa troca a própria senha em **Ajustes → Minha senha**.
+
+Sem a função publicada, o app funciona normalmente; só a tela Equipe avisa que ela falta. Plano gratuito: Edge Functions têm uso mensal incluído bem acima do que isso consome.
+
 ## 5. Pegar as duas chaves do app
 
 **Project Settings → API**:
@@ -112,8 +123,8 @@ Confira os números atuais em supabase.com/pricing; eles mudam com o tempo.
 
 ```bash
 cd app
-node e2e/fake-supabase.mjs &                      # Postgres real + "porteiro" de mentira (porta 54321)
+npx tsx e2e/fake-supabase.mjs &                   # Postgres real + "porteiro" de mentira (porta 54321)
 VITE_SUPABASE_URL=http://127.0.0.1:54321 VITE_SUPABASE_ANON_KEY=x npx vite build --outDir dist-real
 npx vite preview --outDir dist-real --port 4174 &
-node e2e/real.mjs                                 # login, offline, volta do sinal, 3 perfis
+node e2e/real.mjs                                 # login, offline, volta do sinal, 3 perfis, tela Equipe
 ```

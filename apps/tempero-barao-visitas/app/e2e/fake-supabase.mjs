@@ -2,7 +2,7 @@
 // protocolo que o supabase-js usa (Auth por senha + RPC do PostgREST) em cima de um Postgres de
 // verdade com as migrações do projeto. O RLS, os gatilhos e as funções são os reais; só o
 // "porteiro" (GoTrue/PostgREST) é simulado.
-//   node e2e/fake-supabase.mjs            (porta 54321)
+//   npx tsx e2e/fake-supabase.mjs         (porta 54321; tsx porque importa a função gerir-usuarios, escrita em TypeScript)
 import { execSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import http from 'node:http';
@@ -10,6 +10,7 @@ import { userInfo } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { tratar } from '../../supabase/functions/gerir-usuarios/index.ts';
 
 const PORTA = Number(process.env.PORTA ?? 54321);
 const BANCO = `barao_fake_${process.pid}`;
@@ -30,7 +31,7 @@ const USUARIOS = {
 for (const [email, u] of Object.entries(USUARIOS)) {
   await srv.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3::jsonb)`, [u.id, email, JSON.stringify({ nome: u.nome })]);
 }
-await srv.query(`update perfis set papel = 'gestor' where id = '${USUARIOS['gestor@barao.test'].id}';
+await srv.query(`update perfis set papel = 'admin' where id = '${USUARIOS['gestor@barao.test'].id}';
   update perfis set chave_import = 'joao-oliveira' where id = '${USUARIOS['joao@barao.test'].id}';
   update perfis set chave_import = 'gislandio-silveira' where id = '${USUARIOS['gislandio@barao.test'].id}';`);
 const itens = [];
@@ -45,6 +46,7 @@ for (let i = 0; i < 40; i++) {
 }
 await srv.query(`select importar_estabelecimentos($1::jsonb, '[]'::jsonb, 'escalonado')`, [JSON.stringify(itens)]);
 
+const BANIDOS = new Set();
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 const jwt = (u) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: u.id, role: 'authenticated', aud: 'authenticated', email: u.email, exp: Math.floor(Date.now() / 1000) + 3600 })}.assinatura`;
 const usuarioDoToken = (h) => {
@@ -73,7 +75,7 @@ const servidor = http.createServer(async (req, res) => {
     if (url.pathname === '/auth/v1/token' && url.searchParams.get('grant_type') === 'password') {
       const { email, password } = await lerCorpo(req);
       const u = USUARIOS[String(email).toLowerCase()];
-      if (!u || u.senha !== password) return json(res, 400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' });
+      if (!u || u.senha !== password || BANIDOS.has(u.id)) return json(res, 400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' });
       const usuario = { id: u.id, email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: { nome: u.nome }, created_at: new Date().toISOString() };
       return json(res, 200, { access_token: jwt({ ...u, email }), token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: `r-${u.id}`, user: usuario });
     }
@@ -88,6 +90,45 @@ const servidor = http.createServer(async (req, res) => {
     if (url.pathname === '/__sql' && req.method === 'POST') { // só para o teste conferir o servidor
       const { sql, params } = await lerCorpo(req);
       return json(res, 200, (await srv.query(sql, params ?? [])).rows);
+    }
+    if (url.pathname === '/auth/v1/user' && req.method === 'PUT') { // a própria pessoa troca a senha
+      const uid = usuarioDoToken(req.headers.authorization);
+      const dono = Object.values(USUARIOS).find((u) => u.id === uid);
+      if (!dono) return json(res, 401, { code: 401, msg: 'invalid JWT' });
+      const { password } = await lerCorpo(req);
+      if (String(password).length < 8) return json(res, 422, { code: 422, error_code: 'weak_password', msg: 'Password should be at least 8 characters.' });
+      dono.senha = password;
+      return json(res, 200, { id: dono.id, email: Object.keys(USUARIOS).find((e) => USUARIOS[e] === dono) });
+    }
+    if (url.pathname === '/auth/v1/user' && req.method === 'GET') {
+      const uid = usuarioDoToken(req.headers.authorization);
+      const email = Object.keys(USUARIOS).find((e) => USUARIOS[e].id === uid);
+      return email ? json(res, 200, { id: uid, email, aud: 'authenticated', role: 'authenticated' }) : json(res, 401, { msg: 'invalid JWT' });
+    }
+    if (url.pathname === '/functions/v1/gerir-usuarios') { // a Edge Function "de verdade" (mesmo código), com o Auth simulado
+      const corpo = req.method === 'POST' ? await lerCorpo(req) : null;
+      const por = (id) => Object.entries(USUARIOS).find(([, u]) => u.id === id);
+      const r = await (fila = fila.then(() => tratar(corpo, req.headers.authorization ?? null, {
+        chamador: async (a) => { const id = usuarioDoToken(a); return por(id) ? id : null; },
+        perfil: async (id) => (await srv.query(`select papel::text, ativo from perfis where id = $1`, [id])).rows[0] ?? null,
+        listar: async () => Object.entries(USUARIOS).map(([email, u]) => ({ id: u.id, email, ultimoAcesso: null })),
+        criar: async (email, senha, nome) => {
+          if (USUARIOS[email]) throw Object.assign(new Error('User already registered'), { code: 'email_exists' });
+          const r = await srv.query(`insert into auth.users (email, raw_user_meta_data) values ($1, $2::jsonb) returning id`, [email, JSON.stringify({ nome })]);
+          USUARIOS[email] = { senha, id: r.rows[0].id, nome };
+          return { id: r.rows[0].id };
+        },
+        definirPerfil: async (id, p) => void (await srv.query(`update perfis set nome = $2, papel = $3::papel_usuario, chave_import = $4, ativo = $5 where id = $1`, [id, p.nome, p.papel, p.chaveImport, p.ativo])),
+        chaveLivre: async (base) => {
+          const usadas = new Set((await srv.query(`select chave_import c from perfis where chave_import like $1`, [`${base}%`])).rows.map((x) => x.c));
+          if (!usadas.has(base)) return base;
+          for (let n = 2; ; n++) if (!usadas.has(`${base}-${n}`)) return `${base}-${n}`;
+        },
+        trocarSenha: async (id, senha) => void (por(id)[1].senha = senha),
+        bloquear: async (id, sim) => void (sim ? BANIDOS.add(id) : BANIDOS.delete(id)),
+        marcarAtivo: async (id, ativo) => void (await srv.query(`update perfis set ativo = $2 where id = $1`, [id, ativo])),
+      })));
+      return json(res, r.status, r.corpo);
     }
     const m = url.pathname.match(/^\/rest\/v1\/rpc\/([a-z_]+)$/);
     if (m && req.method === 'POST') {

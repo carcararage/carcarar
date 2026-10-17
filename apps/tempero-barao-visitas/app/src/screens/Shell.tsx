@@ -1,8 +1,9 @@
 import {
-  FileText, Ghost, House, LayoutDashboard, Map as MapaIcone, Moon, Settings, Store, Sun, Upload, type LucideIcon,
+  FileText, Ghost, House, LayoutDashboard, Map as MapaIcone, Moon, Settings, Store, Sun, Upload, Users, type LucideIcon,
 } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useTema } from '../hooks/useTema';
+import { modoReal } from '../sync/modo';
 import { ehGestao, useSessao } from '../state/sessao';
 import { Avatar } from '../ui/componentes';
 import { IndicadorSync, useAvisosSync } from '../ui/Sincronizacao';
@@ -30,6 +31,7 @@ export default function Shell() {
         { para: '/pontos', rotulo: 'Pontos', icone: Store },
         { para: '/relatorio', rotulo: 'Relatório', icone: FileText },
         { para: '/importar', rotulo: 'Importar', icone: Upload, lateral: true },
+        ...(modoReal() && usuario?.papel === 'admin' ? [{ para: '/equipe', rotulo: 'Equipe', icone: Users, lateral: true }] : []),
       ]
     : [
         { para: '/', rotulo: 'Hoje', icone: House, fim: true },

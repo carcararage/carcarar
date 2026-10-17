@@ -58,7 +58,7 @@ app/e2e/               fluxo no Chromium (smoke) e auditoria de acessibilidade (
 
 ```bash
 supabase/tests/run_tests.sh           # migrações + regras no Postgres real (precisa de psql/createdb)
-cd app && npx vitest run              # importadores + camada de dados em PGlite (67 testes, incl. celular × servidor)
+cd app && npx vitest run              # importadores + camada de dados em PGlite (77 testes, incl. celular × servidor e gestão de usuários)
 cd app && npm run build && npx vite preview --port 4173 &
 node e2e/smoke.mjs                    # fluxo completo no Chromium (KML=/caminho para usar o seu arquivo)
 node e2e/fluxos.mjs                   # planilha, cadastro, "vinculado a outro vendedor", mapa, relatório

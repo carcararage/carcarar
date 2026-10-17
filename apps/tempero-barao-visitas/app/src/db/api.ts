@@ -48,6 +48,16 @@ export async function listarUsuarios(): Promise<Usuario[]> {
   return r.rows.map((u) => ({ id: u.id, nome: u.nome, papel: u.papel, chaveImport: u.chave_import }));
 }
 
+/** Todas as pessoas com acesso (inclusive desativadas), para a tela Equipe. */
+export async function listarEquipe(): Promise<(Usuario & { ativo: boolean })[]> {
+  const db = await abrirBanco();
+  const r = await db.query<{ id: string; nome: string; papel: Papel; chave_import: string | null; ativo: boolean }>(
+    `select id, nome, papel, chave_import, ativo from perfis
+      order by ativo desc, case papel when 'admin' then 0 when 'gestor' then 1 when 'vendedor' then 2 else 3 end, nome`,
+  );
+  return r.rows.map((u) => ({ id: u.id, nome: u.nome, papel: u.papel, chaveImport: u.chave_import, ativo: u.ativo }));
+}
+
 export async function criarUsuario(nome: string, papel: Papel, chaveImport: string | null = null): Promise<Usuario> {
   const db = await abrirBanco();
   const id = crypto.randomUUID();

@@ -12,6 +12,8 @@ import Importar from './screens/Importar';
 import Ajustes from './screens/Ajustes';
 import Cadastrar from './screens/Cadastrar';
 import Relatorio from './screens/Relatorio';
+import Equipe from './screens/Equipe';
+import { modoReal } from './sync/modo';
 import DesignSystem from './screens/DesignSystem';
 import { Carregando } from './ui/componentes';
 import { Logo } from './ui/logo';
@@ -60,6 +62,7 @@ export default function App() {
           <Route path="cadastrar" element={<Cadastrar />} />
           <Route path="relatorio" element={<Relatorio />} />
           <Route path="importar" element={ehGestao(usuario) ? <Importar /> : <Navigate to="/" replace />} />
+          <Route path="equipe" element={modoReal() && usuario.papel === 'admin' ? <Equipe /> : <Navigate to="/" replace />} />
           <Route path="ajustes" element={<Ajustes />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

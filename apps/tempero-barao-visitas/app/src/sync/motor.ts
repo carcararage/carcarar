@@ -233,6 +233,18 @@ export async function baixar(op: { completo?: boolean; ids?: string[] } = {}): P
 
 let emVoo: Promise<void> | null = null;
 let repetir = false;
+let falhas = 0;
+let timerRetentativa: ReturnType<typeof setTimeout> | null = null;
+
+/** Rede de celular oscila: se algo ficou para enviar, tenta de novo sozinho (5 s, 15 s, 45 s... até 3 min). */
+function agendarNovaTentativa() {
+  if (timerRetentativa) clearTimeout(timerRetentativa);
+  const espera = Math.min(5_000 * 3 ** Math.max(0, falhas - 1), 180_000);
+  timerRetentativa = setTimeout(() => {
+    timerRetentativa = null;
+    void sincronizar();
+  }, espera);
+}
 
 export function sincronizar(opcoes: { completo?: boolean } = {}): Promise<void> {
   if (!modoReal() || !transporteAtual()) return Promise.resolve();
@@ -240,8 +252,13 @@ export function sincronizar(opcoes: { completo?: boolean } = {}): Promise<void> 
     repetir = true;
     return emVoo;
   }
+  if (timerRetentativa) {
+    clearTimeout(timerRetentativa);
+    timerRetentativa = null;
+  }
   emVoo = (async () => {
     mudar({ ocupado: true });
+    let falhou = false;
     try {
       do {
         repetir = false;
@@ -249,9 +266,12 @@ export function sincronizar(opcoes: { completo?: boolean } = {}): Promise<void> 
         await baixar({ completo: opcoes.completo });
         opcoes = {};
         mudar({ online: true, erro: null, precisaEntrar: false, ultimaSync: new Date() });
+        falhas = 0;
         if (recusadas.length) avisos.forEach((f) => f(recusadas));
       } while (repetir);
     } catch (e) {
+      falhou = true;
+      falhas++;
       if (e instanceof ErroRede) mudar({ online: false });
       else if (e instanceof ErroAuth) mudar({ precisaEntrar: true });
       else mudar({ erro: e instanceof Error ? e.message : String(e) });
@@ -259,6 +279,7 @@ export function sincronizar(opcoes: { completo?: boolean } = {}): Promise<void> 
       await atualizarContadores();
       mudar({ ocupado: false });
       emVoo = null;
+      if (falhou && !estado.precisaEntrar && typeof window !== 'undefined') agendarNovaTentativa(); // (só no navegador)
     }
   })();
   return emVoo;

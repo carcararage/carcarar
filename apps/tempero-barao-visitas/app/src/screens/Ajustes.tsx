@@ -5,6 +5,7 @@ import { copiaDeSeguranca, lerRaioCheckin, listarRegras, salvarRaioCheckin, salv
 import { useAsync } from '../hooks/useAsync';
 import { useTema, type Tema } from '../hooks/useTema';
 import { ROTULO_STATUS } from '../lib/formatar';
+import { trocarMinhaSenha } from '../sync/equipe';
 import { modoReal } from '../sync/modo';
 import { sincronizar, useEstadoSync } from '../sync/motor';
 import { ehGestao, useSessao } from '../state/sessao';
@@ -76,6 +77,24 @@ export default function Ajustes() {
           }}
         ><LogOut size={18} aria-hidden /> {real ? 'Sair' : 'Trocar usuário'}</button>
       </section>
+
+      {real && (
+        <section className="card stack">
+          <h2 className="card-title">Minha senha</h2>
+          <form className="stack" onSubmit={async (e) => {
+            e.preventDefault();
+            const f = e.currentTarget;
+            const nova = (new FormData(f).get('nova') as string) ?? '';
+            if (nova.length < 8) { toast('aviso', 'A senha precisa ter pelo menos 8 caracteres.'); return; }
+            try { await trocarMinhaSenha(nova); f.reset(); toast('ok', 'Senha alterada.'); } catch (x) { toast('erro', x instanceof Error ? x.message : String(x)); }
+          }}>
+            <Campo rotulo="Nova senha" dica="Mínimo de 8 caracteres. Precisa de internet.">
+              <input className="input" name="nova" type="password" autoComplete="new-password" minLength={8} required style={{ maxWidth: 280 }} />
+            </Campo>
+            <button className="btn btn-soft" style={{ alignSelf: 'flex-start' }}>Trocar senha</button>
+          </form>
+        </section>
+      )}
 
       <section className="card stack">
         <h2 className="card-title">Aparência</h2>

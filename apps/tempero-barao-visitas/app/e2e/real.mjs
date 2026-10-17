@@ -158,4 +158,48 @@ await m.page.waitForTimeout(800);
 ok((await m.page.locator('main').innerText()).includes(nome), 'gestão vê a visita do João no relatório');
 ok(m.erros.length === 0, 'Gestão: sem erros' + (m.erros.length ? ' → ' + m.erros.join(' | ') : ''));
 
+// ---------------- Equipe: a administração cria um vendedor dentro do sistema ----------------
+await m.page.goto(BASE + '#/equipe');
+await m.page.getByRole('heading', { name: 'Equipe' }).waitFor();
+await m.page.getByRole('button', { name: 'Novo usuário' }).click();
+await m.page.getByLabel('Nome completo').fill('Maria Teste');
+await m.page.getByLabel('E-mail (será o login)').fill('maria@barao.test');
+const senhaGerada = await m.page.getByLabel('Senha inicial').inputValue();
+ok(senhaGerada.length >= 8, `senha inicial gerada (${senhaGerada.length} caracteres)`);
+await m.page.getByRole('button', { name: 'Criar usuário' }).click();
+await m.page.getByText('Passe estes dados para a pessoa').waitFor();
+await m.page.screenshot({ path: `${SHOTS}/06-equipe-criado.png` });
+ok((await m.page.getByRole('dialog').innerText()).includes(senhaGerada), 'a senha aparece UMA vez para repassar');
+await m.page.keyboard.press('Escape');
+await m.page.getByText('Maria Teste').first().waitFor();
+ok(true, 'Maria aparece na lista da Equipe');
+const perfilMaria = await sql(`select papel::text, chave_import, ativo from perfis where nome = 'Maria Teste'`);
+ok(perfilMaria[0]?.papel === 'vendedor' && perfilMaria[0]?.chave_import === 'maria-teste', 'perfil criado como vendedor com chave de importação');
+
+// a vendedora nova entra sozinha, vê a carteira vazia e NÃO vê a tela Equipe
+const ctxMa = await novoContexto();
+const ma = await aberto(ctxMa);
+await login(ma.page, 'maria@barao.test', senhaGerada);
+await ma.page.getByText('Fila de visitas').waitFor({ timeout: 90_000 });
+ok(true, 'vendedora criada no sistema consegue entrar');
+await ma.page.goto(BASE + '#/equipe');
+await ma.page.getByText('Fila de visitas').waitFor();
+ok(true, 'vendedor não acessa a tela Equipe (volta para Hoje)');
+// ela troca a própria senha
+await ma.page.goto(BASE + '#/ajustes');
+await ma.page.getByLabel('Nova senha').fill('senha-nova-123');
+await ma.page.getByRole('button', { name: 'Trocar senha' }).click();
+await ma.page.getByText('Senha alterada.').waitFor();
+ok(true, 'vendedora troca a própria senha');
+
+// a administração desativa: não consegue mais entrar
+await m.page.locator('.item', { hasText: 'Maria Teste' }).getByRole('button', { name: 'Desativar' }).click();
+await m.page.getByText(/desativado: não consegue mais entrar/).waitFor();
+const ctxMb = await novoContexto();
+const mb = await aberto(ctxMb);
+await login(mb.page, 'maria@barao.test', 'senha-nova-123');
+await mb.page.getByText('E-mail ou senha incorretos.').waitFor();
+ok(true, 'usuário desativado não consegue entrar');
+ok([m.erros, ma.erros, mb.erros].every((e) => e.length === 0), 'Equipe: sem erros de console/página' + [m.erros, ma.erros, mb.erros].flat().join(' | '));
+
 await browser.close();
