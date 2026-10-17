@@ -1,7 +1,7 @@
-import { LogOut, Palette, Trash2 } from 'lucide-react';
+import { Download, LogOut, Palette, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { lerRaioCheckin, listarRegras, salvarRaioCheckin, salvarRegra, zerarTudo, type RegraCadencia } from '../db/api';
+import { copiaDeSeguranca, lerRaioCheckin, listarRegras, salvarRaioCheckin, salvarRegra, zerarTudo, type RegraCadencia } from '../db/api';
 import { useAsync } from '../hooks/useAsync';
 import { useTema, type Tema } from '../hooks/useTema';
 import { ROTULO_STATUS } from '../lib/formatar';
@@ -22,6 +22,29 @@ export default function Ajustes() {
   const [confirmando, setConfirmando] = useState(false);
   const real = modoReal();
   const sync = useEstadoSync();
+
+  const [ultimoBackup, setUltimoBackup] = useState<string | null>(() => {
+    try { return localStorage.getItem('barao.ultimoBackup'); } catch { return null; }
+  });
+  async function baixarBackup() {
+    try {
+      const c = await copiaDeSeguranca(usuario!.id);
+      const arquivo = new Blob([JSON.stringify(c)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(arquivo);
+      a.download = `barao-backup-${new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Fortaleza' })}.json`;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Fortaleza' });
+      try { localStorage.setItem('barao.ultimoBackup', agora); } catch { /* sem armazenamento */ }
+      setUltimoBackup(agora);
+      toast('ok', `Cópia gerada: ${c.estabelecimentos.length} clientes, ${c.visitas.length} visitas.`);
+    } catch (e) {
+      toast('erro', e instanceof Error ? e.message : String(e));
+    }
+  }
 
   const porStatus = new Map<string, RegraCadencia[]>();
   for (const r of regras.dados ?? []) porStatus.set(r.status, [...(porStatus.get(r.status) ?? []), r]);
@@ -101,6 +124,19 @@ export default function Ajustes() {
             </Campo>
           </section>
         </>
+      )}
+
+      {gestao && (
+        <section className="card stack">
+          <h2 className="card-title">Cópia de segurança</h2>
+          <p className="small muted">
+            O plano gratuito do servidor não faz backup automático. Baixe uma cópia <strong>toda semana</strong> (clientes, visitas e regras) e guarde no Google Drive da empresa. Em caso de problema, ela permite restaurar tudo.
+            {ultimoBackup ? ` Última cópia neste aparelho: ${ultimoBackup}.` : ' Nenhuma cópia feita neste aparelho ainda.'}
+          </p>
+          <button className="btn btn-soft" style={{ alignSelf: 'flex-start' }} onClick={() => void baixarBackup()}>
+            <Download size={18} aria-hidden /> Baixar cópia de segurança
+          </button>
+        </section>
       )}
 
       <section className="card stack">

@@ -1,0 +1,37 @@
+# Barão Visitas — mantém o projeto Supabase (plano gratuito) acordado.
+# O plano gratuito pausa o projeto após ~7 dias com pouca atividade. A cada 5 dias este job chama a função
+# ping() do banco (devolve só "ok" e a hora; nenhum dado de cliente). Se falhar (ex.: projeto pausado),
+# o GitHub avisa por e-mail a quem criou o agendamento.
+#
+# ATENÇÃO: agendamentos só rodam na branch padrão; em repositório PÚBLICO o GitHub desativa o agendamento
+# após 60 dias sem atividade no repositório. Por isso o lugar certo é o repositório PRIVADO do app.
+# Rodar na hora para testar: aba Actions → "Barão · manter Supabase ativo" → Run workflow.
+name: Barão · manter Supabase ativo
+
+on:
+  schedule:
+    - cron: '23 11 */5 * *' # dias 1, 6, 11, 16, 21, 26 e 31, às 11:23 UTC (8:23 em Parnaíba)
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Chamar ping() no Supabase
+        env:
+          # valores públicos por desenho (a chave publishable vai dentro do app). NUNCA coloque a service_role aqui.
+          SUPABASE_URL: ${{ vars.SUPABASE_URL || 'https://odtufjckoetwwkyhhfiy.supabase.co' }}
+          SUPABASE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_f-03j2WBEw1aTWRyDQ-h7w_M8WFhDVm' }}
+        run: |
+          for i in 1 2 3; do
+            resp=$(curl -sS --max-time 30 -X POST "$SUPABASE_URL/rest/v1/rpc/ping" \
+              -H "apikey: $SUPABASE_KEY" -H "Content-Type: application/json" -d '{}' || true)
+            if echo "$resp" | grep -q '"ok": *true'; then echo "ok: $resp"; exit 0; fi
+            echo "tentativa $i falhou: ${resp:-sem resposta}"
+            sleep 20
+          done
+          echo "O Supabase não respondeu ao ping 3 vezes. Se o projeto estiver pausado, reative em supabase.com/dashboard."
+          exit 1

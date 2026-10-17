@@ -317,6 +317,19 @@ describe('planilha casa com o mapa por CNPJ e nome provisório (0006)', () => {
   });
 });
 
+describe('cópia de segurança', () => {
+  it('a gestão leva tudo; vendedor não gera a cópia da empresa', async () => {
+    const { copiaDeSeguranca } = await import('./api');
+    const c = await copiaDeSeguranca(gestor.id);
+    expect(c.versao).toBe(1);
+    expect(c.estabelecimentos.length).toBeGreaterThan(10);
+    expect(c.visitas.length).toBeGreaterThan(0);
+    expect(c.perfis.length).toBeGreaterThanOrEqual(3);
+    expect(JSON.parse(JSON.stringify(c)).regras).toHaveLength(9);
+    await expect(copiaDeSeguranca(joao.id)).rejects.toThrow(/gestão/);
+  });
+});
+
 describe('migrações do app', () => {
   it('o banco do navegador aplica TODAS as migrações da pasta supabase/migrations, na ordem', async () => {
     const { readdirSync } = await import('node:fs');

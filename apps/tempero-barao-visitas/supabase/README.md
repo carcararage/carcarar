@@ -73,6 +73,33 @@ Entre como gestão, vá em **Importar** e envie o KML do Google Earth e depois a
 - iPhone: o Safari pode apagar os dados de sites não instalados após alguns dias; por isso **instale na tela inicial**.
 - O mapa (fundo de ruas) só mostra o que já foi carregado antes; os pontos aparecem sempre.
 
+## Plano gratuito: o que observar (5 vendedores)
+
+| Item | Situação para a Barão |
+|---|---|
+| Banco (500 MB) | Uns 4 mil clientes + visitas dos 5 vendedores ocupam dezenas de MB por ano. Sobra por muitos anos. |
+| Usuários (50 mil ativos/mês) | Usa 6. |
+| Tráfego | Cada celular baixa a carteira inteira uma vez (poucos MB) e depois só o que mudou (KB). Muito abaixo de qualquer limite divulgado. |
+| **Pausa por inatividade** | Projeto gratuito pausa após ~7 dias com pouca atividade. **Os vendedores usando todo dia já mantêm ativo**; a automação `.github/workflows/barao-keepalive.yml` (a cada 5 dias) cobre feriados e férias. Se pausar, reative no painel (os dados ficam guardados). |
+| **Sem backup automático** | Plano gratuito não faz. A gestão baixa a cópia em **Ajustes → Cópia de segurança** toda semana e guarda no Drive. |
+| 2 projetos ativos | Só este por enquanto. |
+| E-mails do Auth | Limite baixo de envios por hora: por isso as senhas são criadas/redefinidas pela gestão no painel, sem depender de e-mail. |
+| Mapa de fundo | Usa o OpenStreetMap (gratuito, para uso leve; guarda cache). É a única parte de terceiros sem garantia: se um dia bloquear, troca-se por outro provedor com uma variável (`VITE_MAP_TILES`). |
+
+Confira os números atuais em supabase.com/pricing; eles mudam com o tempo.
+
+### Manter o projeto ativo
+
+- **GitHub Actions** (preferido): `.github/workflows/barao-keepalive.yml` chama `ping()` a cada 5 dias e avisa por e-mail se falhar. Precisa estar na branch padrão de um repositório **privado** (em repositório público o GitHub desativa agendamentos após 60 dias sem atividade).
+- **Sem GitHub**: crie um job grátis em cron-job.org: `GET https://SEU-PROJETO.supabase.co/rest/v1/rpc/ping?apikey=SUA_CHAVE_PUBLISHABLE`, a cada 5 dias.
+
+## LGPD (resumo prático; não substitui orientação jurídica)
+
+- Sistema interno **também** é tratamento de dados pessoais: contatos de clientes (nome do responsável, celular), dados dos vendedores e a **localização do check-in**.
+- Já feito: **CPF, RG, e-mail e limite de crédito não são importados**; localização só é lida **na hora do check-in** (sem rastreamento); cada vendedor só acessa a própria carteira; acesso por login individual; criptografia em trânsito.
+- A fazer (administrativo, simples): informar os vendedores, por escrito, que o app registra a localização no check-in e para quê (comprovar a visita); definir quem na empresa responde pelo assunto (canal para titulares); desativar logo quem sair da empresa; guardar a cópia de segurança em local restrito.
+- Servidor fora do Brasil (EUA) é permitido com garantias; um servidor em São Paulo simplifica a conversa.
+
 ## Rotina
 
 - **Criar vendedor novo:** Authentication → Add user, depois um `update perfis ...` como no passo 2.

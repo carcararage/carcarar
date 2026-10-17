@@ -963,6 +963,44 @@ export async function definirLocalizacao(uid: string, id: string, lat: number, l
 }
 
 // ---------------------------------------------------------------------------------------------
+// Cópia de segurança (gestão)
+// ---------------------------------------------------------------------------------------------
+
+export interface CopiaDeSeguranca {
+  geradoEm: string;
+  versao: 1;
+  perfis: unknown[];
+  estabelecimentos: unknown[];
+  visitas: unknown[];
+  regras: unknown[];
+  configuracoes: unknown[];
+  regioes: unknown[];
+}
+
+/**
+ * Tudo o que a gestão enxerga, num objeto só (vira um arquivo JSON). O plano gratuito do Supabase não faz
+ * backup automático; a gestão guarda uma cópia por semana. Sai da cópia local do aparelho da gestão,
+ * então funciona até sem internet. Só gestão (vendedor receberia a própria carteira, não a empresa toda).
+ */
+export async function copiaDeSeguranca(uid: string): Promise<CopiaDeSeguranca> {
+  return comoUsuario(uid, async (tx) => {
+    const todos = async (sql: string) => (await tx.query<{ x: unknown }>(sql)).rows.map((r) => r.x);
+    const papel = (await tx.query<{ p: string | null }>(`select meu_papel()::text as p`)).rows[0].p;
+    if (papel !== 'admin' && papel !== 'gestor') throw new Error('Só a gestão pode gerar a cópia de segurança.');
+    return {
+      geradoEm: new Date().toISOString(),
+      versao: 1 as const,
+      perfis: await todos(`select to_jsonb(p) as x from perfis p order by nome`),
+      estabelecimentos: await todos(`select to_jsonb(e) as x from estabelecimentos e order by criado_em, id`),
+      visitas: await todos(`select to_jsonb(v) as x from visitas v order by checkin_em, id`),
+      regras: await todos(`select to_jsonb(r) as x from regras_cadencia r`),
+      configuracoes: await todos(`select to_jsonb(c) as x from configuracoes c`),
+      regioes: await todos(`select to_jsonb(g) as x from regioes g`),
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
 // Relatório de visitas
 // ---------------------------------------------------------------------------------------------
 

@@ -1001,4 +1001,19 @@ begin
 end $$;
 rollback;
 
+-- ===========================================================================
+-- 14. ping (0008): público, só devolve ok + hora
+-- ===========================================================================
+begin;
+set local role anon;
+do $$
+declare r jsonb;
+begin
+  r := ping();
+  assert (r ->> 'ok')::boolean and r ? 'agora' and (select count(*) from jsonb_object_keys(r)) = 2, 'ping devolve só ok e agora';
+  begin perform sync_baixar(); raise exception 'ERRO: anon baixou';
+  exception when insufficient_privilege then null; end;
+end $$;
+rollback;
+
 \echo 'OK: todos os testes de banco passaram'
